@@ -1,0 +1,53 @@
+###
+POST http://localhost:5000/api/user/gavroman/create
+Content-Type: application/json
+
+{
+  "about": "This is the day you will always remember as the day that you almost caught Captain Jack Sparrow!",
+  "email": "Gavroman@mail.ru",
+  "fullname": "gavroman fhsdjk hkhfsdkf"
+}
+
+###
+POST http://localhost:5000/api/user/olololog/create
+Content-Type: application/json
+
+{
+  "about": "olololog",
+  "email": "olololog@mail.ru",
+  "fullname": "olololog"
+}
+
+###
+GET http://localhost:5000/api/user/gavroman/profile
+Accept: application/json
+
+###
+GET http://localhost:5000/api/user/ololog/profile
+Accept: application/json
+
+###
+POST http://localhost:5000/api/user/gavroman/profile
+Content-Type: application/json
+
+{
+  "about": "olololog",
+  "email": "olololog@mail.ru",
+  "fullname": "gavroman fhsdjk hkhfsdkf"
+}
+
+###
+POST http://localhost:5000/api/user/e.b8cd6zYvIkHKRd/create HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+
+{
+  "about": "Miles. Nota habitare me gaudeant nuda suo est posita et. Hos num mare caecitatem perit en audivimus cupiditate. Tenebant oris secura mei agito cito alta, desidero. Somno sic faciat ideo fudi, aer te stet es. Sit os soli evellas occurro.",
+  "email": "leguntur.yTiV6zyu5lM3j@valerettam.net",
+  "fullname": "Elizabeth Anderson"
+}
+
+###
+
+
+
