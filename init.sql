@@ -26,8 +26,7 @@ CREATE TABLE FORUMS
     userID int                 NOT NULL,
     FOREIGN KEY (userID) REFERENCES USERS (ID)
 );
-
-CREATE TABLE THREADS
+    CREATE TABLE THREADS
 (
     ID      SERIAL PRIMARY KEY,
     title   varchar(127)        NOT NULL,
