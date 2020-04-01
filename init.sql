@@ -2,6 +2,10 @@ DROP TABLE IF EXISTS POSTS;
 DROP TABLE IF EXISTS THREADS;
 DROP TABLE IF EXISTS FORUMS;
 DROP TABLE IF EXISTS USERS;
+
+DROP SEQUENCE IF EXISTS serial_threads;
+DROP SEQUENCE IF EXISTS serial_posts;
+
 CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE TABLE USERS
@@ -12,44 +16,54 @@ CREATE TABLE USERS
     fullName varchar(127)        NOT NULL,
     about    text
 );
-ALTER TABLE users
+ALTER TABLE USERS
     ALTER COLUMN email TYPE citext;
-ALTER TABLE users
+ALTER TABLE USERS
     ALTER COLUMN nickname TYPE citext;
+
+
+
+CREATE SEQUENCE serial_threads MINVALUE 0 START 0 NO CYCLE;
+CREATE SEQUENCE serial_posts MINVALUE 0 START 0 NO CYCLE;
 CREATE TABLE FORUMS
 (
-    ID     SERIAL PRIMARY KEY,
-    posts  int,
-    slug   varchar(127) UNIQUE NOT NULL,
-    treads int,
-    title  varchar(127)        NOT NULL,
-    userID int                 NOT NULL,
+    ID      SERIAL PRIMARY KEY,
+    posts   int DEFAULT nextval('serial_posts'),
+    slug    varchar(127) UNIQUE NOT NULL,
+    threads int DEFAULT nextval('serial_threads'),
+    title   varchar(127)        NOT NULL,
+    userID  int                 NOT NULL,
     FOREIGN KEY (userID) REFERENCES USERS (ID)
 );
-    CREATE TABLE THREADS
+ALTER TABLE FORUMS
+    ALTER COLUMN slug TYPE citext;
+
+CREATE TABLE THREADS
 (
     ID      SERIAL PRIMARY KEY,
-    title   varchar(127)        NOT NULL,
-    created timestamp,
-    message varchar(511)        NOT NULL,
-    slug    varchar(127) UNIQUE NOT NULL,
-    votes   int default 0       NOT NULL,
-    userID  int                 NOT NULL,
-    forumID int                 NOT NULL,
---     FOREIGN KEY (userID) REFERENCES USERS (ID),
-    FOREIGN KEY (forumID) REFERENCES FORUMS (ID)
+    title   varchar(127) NOT NULL,
+    created timestamptz,
+    message text         NOT NULL,
+    slug    citext UNIQUE,
+    votes   int default 0,
+    userID  int          NOT NULL,
+    forumID int          NOT NULL,
+    FOREIGN KEY (userID) REFERENCES USERS (ID),
+    FOREIGN KEY (forumID) REFERENCES FORUMS (ID)/*,
+    UNIQUE (forumID, slug)*/
 );
 
 CREATE TABLE POSTS
 (
     ID           SERIAL PRIMARY KEY,
-    created      timestamp,
-    message      varchar(511)       NOT NULL,
+    created      timestamp          NOT NULL,
+    message      text               NOT NULL,
     isEdited     bool default false NOT NULL,
-    parentPostID int  default 0,
+    parentPostID int                NOT NULL,
     userID       int                NOT NULL,
+    threadID     int                NOT NULL,
     forumID      int                NOT NULL,
-    FOREIGN KEY (parentPostID) REFERENCES POSTS (ID),
+    FOREIGN KEY (threadID) REFERENCES THREADS (ID),
     FOREIGN KEY (userID) REFERENCES USERS (ID),
     FOREIGN KEY (forumID) REFERENCES FORUMS (ID)
 )

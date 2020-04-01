@@ -33,7 +33,6 @@ module.exports = class UserHandlers {
         const nickname = req.params.nickname;
         const query = 'SELECT nickname, email, fullname, about FROM users WHERE nickname = $1';
 
-        // 1 стул
         try {
             let queryResult = await this.db.query({text: query, values: [nickname]});
             if (queryResult.rows.length === 0) {
@@ -57,8 +56,8 @@ module.exports = class UserHandlers {
                 res.status(404).send(new Error('No user found'));
             } else {
                 body.email = body.email || queryResult.rows[0].email;
-                body.fullname = body.fullname || queryResult.rows[0].fullname;
                 body.about = body.about || queryResult.rows[0].about;
+                body.fullname = body.fullname || queryResult.rows[0].fullname;
                 query = 'UPDATE USERS SET fullname = $1, email = $2, about = $3 WHERE nickname = $4;';
                 try {
                     await this.db.query({text: query, values: [body.fullname, body.email, body.about, nickname]});
