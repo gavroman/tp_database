@@ -167,36 +167,27 @@ module.exports = class threadHandlers {
             return;
         }
         const insertOrUpdateVotesQuery = `insert
-                                  into votes(userID, threadID, vote)
-                                  VALUES ((SELECT ID FROM users WHERE nickname = $1), $2, $3)
-                                  ON CONFLICT ON CONSTRAINT user_thread DO UPDATE SET vote = $3`;
+                                          into votes(userID, threadID, vote)
+                                          VALUES ((SELECT ID FROM users WHERE nickname = $1), $2, $3)
+                                          ON CONFLICT ON CONSTRAINT user_thread DO UPDATE SET vote = $3`;
         const updateThreadsQuery = `UPDATE threads
                                     SET votes = votes + $2
                                     WHERE ID = $1;`;
-        if (queryVoteCheckResult.rows.length === 0) {
-            // new vote
-            try {
-                await this.db.query({text: insertOrUpdateVotesQuery, values: [nickname, threadID, newVote]});
-                await this.db.query({text: updateThreadsQuery, values: [threadID, voice]});
-            } catch (err) {
-                console.log(err);
-                res.status(500).send(err);
-                return;
-            }
-        } else {
-            // old vote
+
+        if (queryVoteCheckResult.rows.length !== 0) {
             const voteData = queryVoteCheckResult.rows[0];
             if (voteData.vote !== newVote) {
-                try {
-                    voice *= 2;
-                    await this.db.query({text: insertOrUpdateVotesQuery, values: [nickname, threadID, newVote]});
-                    await this.db.query({text: updateThreadsQuery, values: [threadID, voice]});
-                } catch (err) {
-                    console.log(err);
-                    res.status(500).send(err);
-                    return;
-                }
+                voice *= 2;
             }
+        }
+        try {
+            await this.db.query({text: insertOrUpdateVotesQuery, values: [nickname, threadID, newVote]});
+            await this.db.query({text: updateThreadsQuery, values: [threadID, voice]});
+            console.log(voice);
+        } catch (err) {
+            console.log(err);
+            res.status(500).send(err);
+            return;
         }
 
         const selectQuery = `SELECT u.nickname AS author,
