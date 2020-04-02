@@ -197,7 +197,7 @@ module.exports = class threadHandlers {
                                     message,
                                     t.slug     AS slug,
                                     t.title    AS title,
-                                    votes
+                                    votes AS votes
                              FROM threads t
                                       JOIN forums f ON (t.forumID = f.ID) AND (t.Id = $1)
                                       JOIN users u ON (t.userID = u.ID);`;
@@ -206,6 +206,7 @@ module.exports = class threadHandlers {
             if (queryResult.rows.length === 0) {
                 res.status(404).send(new Error('No such thread'));
             } else {
+                console.log(queryResult.rows[0]);
                 res.status(200).send(queryResult.rows[0]);
             }
         } catch (err) {
