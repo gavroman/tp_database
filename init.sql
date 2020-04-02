@@ -26,7 +26,7 @@ CREATE TABLE FORUMS
     threads int DEFAULT 0,
     title   varchar(127)  NOT NULL,
     userID  int           NOT NULL,
-    FOREIGN KEY (userID) REFERENCES USERS (ID)
+    FOREIGN KEY (userID) REFERENCES USERS (ID) ON DELETE CASCADE
 );
 
 CREATE TABLE THREADS
@@ -39,8 +39,8 @@ CREATE TABLE THREADS
     votes   int default 0,
     userID  int          NOT NULL,
     forumID int          NOT NULL,
-    FOREIGN KEY (userID) REFERENCES USERS (ID),
-    FOREIGN KEY (forumID) REFERENCES FORUMS (ID)/*,
+    FOREIGN KEY (userID) REFERENCES USERS (ID) ON DELETE CASCADE,
+    FOREIGN KEY (forumID) REFERENCES FORUMS (ID) ON DELETE CASCADE /*,
     UNIQUE (forumID, slug)*/
 );
 
@@ -54,9 +54,9 @@ CREATE TABLE POSTS
     userID       int                NOT NULL,
     threadID     int                NOT NULL,
     forumID      int                NOT NULL,
-    FOREIGN KEY (threadID) REFERENCES THREADS (ID),
-    FOREIGN KEY (userID) REFERENCES USERS (ID),
-    FOREIGN KEY (forumID) REFERENCES FORUMS (ID)
+    FOREIGN KEY (threadID) REFERENCES THREADS (ID) ON DELETE CASCADE,
+    FOREIGN KEY (userID) REFERENCES USERS (ID) ON DELETE CASCADE,
+    FOREIGN KEY (forumID) REFERENCES FORUMS (ID) ON DELETE CASCADE
 );
 
 CREATE TABLE VOTES
@@ -65,8 +65,8 @@ CREATE TABLE VOTES
     vote     boolean NOT NULL default true,
     userID   int     NOT NULL,
     threadID int     NOT NULL,
-    FOREIGN KEY (userID) REFERENCES USERS (ID),
-    FOREIGN KEY (threadID) REFERENCES THREADS (ID),
+    FOREIGN KEY (userID) REFERENCES USERS (ID) ON DELETE CASCADE,
+    FOREIGN KEY (threadID) REFERENCES THREADS (ID) ON DELETE CASCADE,
     CONSTRAINT user_thread UNIQUE (userID, threadID)
 );
 

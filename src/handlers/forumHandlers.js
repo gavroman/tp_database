@@ -40,13 +40,10 @@ module.exports = class forumHandlers {
                         res.status(500).send(err);
                     }
                     break;
-
                 case '23502':
                     res.status(404).send(new Error('Can\'t find user', body.user));
                     break;
-
                 default:
-                    console.log('ZALUPA');
                     res.status(500).send(err);
             }
         }
@@ -179,6 +176,6 @@ module.exports = class forumHandlers {
 
     getForumUsers = (req, res) => {
         console.log('getForumUsers');
-        res.status(404).end();
+        res.status(404).send('Пока не седално');
     };
 };
