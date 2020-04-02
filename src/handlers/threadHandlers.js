@@ -158,9 +158,12 @@ module.exports = class threadHandlers {
                                          JOIN users u ON (u.nickname = $1)
                                     AND (v.userID = u.ID)
                                     AND (v.threadID = $2);`;
-        let queryVoteCheckResult;
+        let oldVote;
         try {
-            queryVoteCheckResult = await this.db.query({text: checkVoteQuery, values: [nickname, threadID]})
+            const queryVoteCheckResult = await this.db.query({text: checkVoteQuery, values: [nickname, threadID]});
+            if (queryVoteCheckResult) {
+                oldVote = queryVoteCheckResult.rows[0];
+            }
         } catch (err) {
             console.log(err);
             res.status(500).send(err);
@@ -174,22 +177,20 @@ module.exports = class threadHandlers {
                                     SET votes = votes + $2
                                     WHERE ID = $1;`;
 
-        if (queryVoteCheckResult.rows.length !== 0) {
-            const voteData = queryVoteCheckResult.rows[0];
-            if (voteData.vote !== newVote) {
+
+        if (!oldVote || (oldVote && oldVote.vote !== newVote)) {
+            if (oldVote && oldVote.vote !== newVote) {
                 voice *= 2;
             }
+            try {
+                await this.db.query({text: insertOrUpdateVotesQuery, values: [nickname, threadID, newVote]});
+                await this.db.query({text: updateThreadsQuery, values: [threadID, voice]});
+            } catch (err) {
+                console.log(err);
+                res.status(500).send(err);
+                return;
+            }
         }
-        try {
-            await this.db.query({text: insertOrUpdateVotesQuery, values: [nickname, threadID, newVote]});
-            await this.db.query({text: updateThreadsQuery, values: [threadID, voice]});
-            console.log(voice);
-        } catch (err) {
-            console.log(err);
-            res.status(500).send(err);
-            return;
-        }
-
         const selectQuery = `SELECT u.nickname AS author,
                                     created,
                                     f.slug     AS forum,
@@ -197,7 +198,7 @@ module.exports = class threadHandlers {
                                     message,
                                     t.slug     AS slug,
                                     t.title    AS title,
-                                    votes AS votes
+                                    votes
                              FROM threads t
                                       JOIN forums f ON (t.forumID = f.ID) AND (t.Id = $1)
                                       JOIN users u ON (t.userID = u.ID);`;
@@ -206,7 +207,6 @@ module.exports = class threadHandlers {
             if (queryResult.rows.length === 0) {
                 res.status(404).send(new Error('No such thread'));
             } else {
-                console.log(queryResult.rows[0]);
                 res.status(200).send(queryResult.rows[0]);
             }
         } catch (err) {
