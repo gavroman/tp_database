@@ -158,9 +158,9 @@ module.exports = class threadHandlers {
                                          JOIN users u ON (u.nickname = $1)
                                     AND (v.userID = u.ID)
                                     AND (v.threadID = $2);`;
-        let queryResult;
+        let queryVoteCheckResult;
         try {
-            queryResult = await this.db.query({text: checkVoteQuery, values: [nickname, threadID]})
+            queryVoteCheckResult = await this.db.query({text: checkVoteQuery, values: [nickname, threadID]})
         } catch (err) {
             console.log(err);
             res.status(500).send(err);
@@ -173,9 +173,8 @@ module.exports = class threadHandlers {
         const updateThreadsQuery = `UPDATE threads
                                     SET votes = votes + $2
                                     WHERE ID = $1;`;
-        if (queryResult.rows.length === 0) {
+        if (queryVoteCheckResult.rows.length === 0) {
             // new vote
-            console.log('newVOTE');
             try {
                 await this.db.query({text: insertOrUpdateVotesQuery, values: [nickname, threadID, newVote]});
                 await this.db.query({text: updateThreadsQuery, values: [threadID, voice]});
@@ -186,8 +185,7 @@ module.exports = class threadHandlers {
             }
         } else {
             // old vote
-            const voteData = queryResult.rows[0];
-            console.log(voteData);
+            const voteData = queryVoteCheckResult.rows[0];
             if (voteData.vote !== newVote) {
                 try {
                     voice *= 2;
