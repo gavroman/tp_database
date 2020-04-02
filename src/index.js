@@ -21,8 +21,8 @@ app.get('/api/forum/:slug/threads', forumHandlers.getForumThreads);
 app.get('/api/forum/:slug/users', forumHandlers.getForumUsers);
 
 let postHandlers = new PostHandlers(db);
-app.get('/api/:id/details', postHandlers.getPosts);
-app.post('/api/:id/details', postHandlers.updatePost);
+app.get('/api/post/:id/details', postHandlers.getPosts);
+app.post('/api/post/:id/details', postHandlers.updatePost);
 
 let threadHandlers = new ThreadHandlers(db);
 app.post('/api/thread/:slug_or_id/create', threadHandlers.createThreadPosts);

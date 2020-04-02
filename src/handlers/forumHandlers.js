@@ -67,7 +67,7 @@ module.exports = class forumHandlers {
         const selectQuery = `SELECT nickname AS author,
                                     f.slug   AS forum,
                                     t.id     AS ID,
-                                    created,    
+                                    created,
                                     message,
                                     t.slug   AS slug,
                                     t.title  AS title

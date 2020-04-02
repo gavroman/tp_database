@@ -7,9 +7,6 @@ DROP TABLE IF EXISTS USERS;
 DROP SEQUENCE IF EXISTS serial_threads;
 DROP SEQUENCE IF EXISTS serial_posts;
 
-CREATE SEQUENCE serial_threads MINVALUE 0 START 0 NO CYCLE;
-CREATE SEQUENCE serial_posts MINVALUE 0 START 0 NO CYCLE;
-
 CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE TABLE USERS
@@ -24,9 +21,9 @@ CREATE TABLE USERS
 CREATE TABLE FORUMS
 (
     ID      SERIAL PRIMARY KEY,
-    posts   int DEFAULT nextval('serial_posts'),
+    posts   int DEFAULT 0,
     slug    citext UNIQUE NOT NULL,
-    threads int DEFAULT nextval('serial_threads'),
+    threads int DEFAULT 0,
     title   varchar(127)  NOT NULL,
     userID  int           NOT NULL,
     FOREIGN KEY (userID) REFERENCES USERS (ID)
@@ -71,4 +68,37 @@ CREATE TABLE VOTES
     FOREIGN KEY (userID) REFERENCES USERS (ID),
     FOREIGN KEY (threadID) REFERENCES THREADS (ID),
     CONSTRAINT user_thread UNIQUE (userID, threadID)
-)
+);
+
+CREATE OR REPLACE FUNCTION increment(column_name text, forum_id integer) RETURNS void AS
+$func$
+BEGIN
+    EXECUTE format('UPDATE forums SET %I = %s + 1 WHERE ID = %s;', column_name, column_name, forum_id);
+END;
+$func$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION increment_posts() RETURNS trigger AS
+$increment_posts$
+BEGIN
+    PERFORM increment('posts', NEW.forumID);
+    RETURN NULL;
+END;
+$increment_posts$ LANGUAGE plpgsql;
+CREATE TRIGGER increment_posts
+    AFTER INSERT
+    ON posts
+    FOR EACH ROW
+EXECUTE PROCEDURE increment_posts();
+
+CREATE OR REPLACE FUNCTION increment_threads() RETURNS trigger AS
+$increment_threads$
+BEGIN
+    PERFORM increment('threads', NEW.forumID);
+    RETURN NULL;
+END;
+$increment_threads$ LANGUAGE plpgsql;
+CREATE TRIGGER increment_threads
+    AFTER INSERT
+    ON posts
+    FOR EACH ROW
+EXECUTE PROCEDURE increment_threads();
