@@ -177,14 +177,13 @@ module.exports = class threadHandlers {
                                     SET votes = votes + $2
                                     WHERE ID = $1;`;
 
-
         if (!oldVote || (oldVote && oldVote.vote !== newVote)) {
             if (oldVote && oldVote.vote !== newVote) {
                 voice *= 2;
             }
             try {
                 await this.db.query({text: insertOrUpdateVotesQuery, values: [nickname, threadID, newVote]});
-                await this.db.query({text: updateThreadsQuery, values: [threadID, voice]});
+                this.db.query({text: updateThreadsQuery, values: [threadID, voice]});
             } catch (err) {
                 console.log(err);
                 res.status(500).send(err);
