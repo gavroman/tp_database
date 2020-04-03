@@ -4,15 +4,18 @@ DROP TABLE IF EXISTS THREADS;
 DROP TABLE IF EXISTS FORUMS;
 DROP TABLE IF EXISTS USERS;
 
-DROP SEQUENCE IF EXISTS serial_threads;
-DROP SEQUENCE IF EXISTS serial_posts;
+DROP trigger IF EXISTS handle_new_post ON posts CASCADE;
+DROP FUNCTION IF EXISTS handle_new_post;
+
+DROP trigger IF EXISTS increment_threads ON threads CASCADE;
+DROP FUNCTION IF EXISTS increment_threads;
 
 CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE TABLE USERS
 (
     ID       SERIAL PRIMARY KEY,
-    nickname citext UNIQUE,
+    nickname citext COLLATE "C" UNIQUE ,
     email    citext UNIQUE NOT NULL,
     fullName varchar(127)  NOT NULL,
     about    text
@@ -51,6 +54,7 @@ CREATE TABLE POSTS
     message      text               NOT NULL,
     isEdited     bool default false NOT NULL,
     parentPostID int                NOT NULL,
+    parents      integer[],
     userID       int                NOT NULL,
     threadID     int                NOT NULL,
     forumID      int                NOT NULL,
@@ -77,18 +81,22 @@ BEGIN
 END;
 $func$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION increment_posts() RETURNS trigger AS
-$increment_posts$
+CREATE OR REPLACE FUNCTION handle_new_post() RETURNS trigger AS
+$handle_new_post$
+DECLARE
+    old_parents integer[] := '{}';
 BEGIN
     PERFORM increment('posts', NEW.forumID);
+    SELECT parents INTO old_parents FROM posts WHERE id = NEW.parentPostID;
+    UPDATE posts SET parents = array_append(old_parents, NEW.ID) WHERE ID = NEW.ID;
     RETURN NULL;
 END;
-$increment_posts$ LANGUAGE plpgsql;
-CREATE TRIGGER increment_posts
+$handle_new_post$ LANGUAGE plpgsql;
+CREATE TRIGGER handle_new_post
     AFTER INSERT
     ON posts
     FOR EACH ROW
-EXECUTE PROCEDURE increment_posts();
+EXECUTE PROCEDURE handle_new_post();
 
 CREATE OR REPLACE FUNCTION increment_threads() RETURNS trigger AS
 $increment_threads$
@@ -99,6 +107,6 @@ END;
 $increment_threads$ LANGUAGE plpgsql;
 CREATE TRIGGER increment_threads
     AFTER INSERT
-    ON posts
+    ON threads
     FOR EACH ROW
 EXECUTE PROCEDURE increment_threads();

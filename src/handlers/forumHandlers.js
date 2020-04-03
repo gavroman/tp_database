@@ -113,7 +113,7 @@ module.exports = class forumHandlers {
     getForumDetails = async (req, res) => {
         const slug = req.params.slug;
 
-        const query = `SELECT slug, title, nickname as "user"
+        const query = `SELECT posts, threads, slug, title, nickname as "user"
                        FROM forums f
                                 JOIN users u ON (u.id = f.userID) AND (slug = $1)`;
 
@@ -170,12 +170,51 @@ module.exports = class forumHandlers {
             res.status(200).send(queryResult.rows);
         } catch (err) {
             console.log(err);
-            req.status(500).send(err);
+            res.status(500).send(err);
         }
     };
 
-    getForumUsers = (req, res) => {
-        console.log('getForumUsers');
-        res.status(404).send('Пока не седално');
+    getForumUsers = async (req, res) => {
+        const forumSlug = req.params.slug;
+        const limit = (req.query.limit) ? `LIMIT ${req.query.limit}` : '';
+        let order = 'ORDER BY u.nickname';
+        let sign = '>';
+        if (req.query.desc !== undefined && req.query.desc.toUpperCase() === 'TRUE') {
+            order = 'ORDER BY u.nickname DESC';
+            sign = '<';
+        }
+        const since = (req.query.since) ? `AND lower(u.nickname) ${sign} lower('${req.query.since}') ` : '';
+        const checkForumQuery = `SELECT ID
+                                 FROM forums
+                                 WHERE slug = $1;`;
+        let forumID;
+        try {
+            const queryResult = await this.db.query({text: checkForumQuery, values: [forumSlug]});
+            if (queryResult.rows.length === 0) {
+                res.status(404).send(new Error('Forum not found'));
+                return;
+            } else {
+                forumID = queryResult.rows[0].id;
+            }
+        } catch (err) {
+            res.status(500).send(err);
+            return;
+        }
+        const query = `SELECT nickname, fullname, about, email
+                       FROM users u
+                                LEFT JOIN threads t ON (t.forumID = $1) AND (u.ID = t.userID)
+                                LEFT JOIN posts p ON (p.forumID = $1) AND (u.ID = p.userID)
+                       WHERE (t IS NOT NULL OR p IS NOT NULL) ${since}
+                       GROUP BY nickname, fullname, about, email
+                       ${order}
+                       ${limit};`;
+
+        try {
+            const queryResult = await this.db.query({text: query, values: [forumID]});
+            res.status(200).send(queryResult.rows);
+        } catch (err) {
+            console.log(err);
+            res.status(500).send(err);
+        }
     };
 };
