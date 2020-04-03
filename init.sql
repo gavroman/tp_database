@@ -1,55 +1,112 @@
+DROP TABLE IF EXISTS VOTES;
 DROP TABLE IF EXISTS POSTS;
 DROP TABLE IF EXISTS THREADS;
 DROP TABLE IF EXISTS FORUMS;
 DROP TABLE IF EXISTS USERS;
+
+DROP trigger IF EXISTS handle_new_post ON posts CASCADE;
+DROP FUNCTION IF EXISTS handle_new_post;
+
+DROP trigger IF EXISTS increment_threads ON threads CASCADE;
+DROP FUNCTION IF EXISTS increment_threads;
+
 CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE TABLE USERS
 (
     ID       SERIAL PRIMARY KEY,
-    nickname varchar(63) UNIQUE,
-    email    varchar(127) UNIQUE NOT NULL,
-    fullName varchar(127)        NOT NULL,
+    nickname citext COLLATE "C" UNIQUE ,
+    email    citext UNIQUE NOT NULL,
+    fullName varchar(127)  NOT NULL,
     about    text
 );
-ALTER TABLE users
-    ALTER COLUMN email TYPE citext;
-ALTER TABLE users
-    ALTER COLUMN nickname TYPE citext;
+
 CREATE TABLE FORUMS
 (
-    ID     SERIAL PRIMARY KEY,
-    posts  int,
-    slug   varchar(127) UNIQUE NOT NULL,
-    treads int,
-    title  varchar(127)        NOT NULL,
-    userID int                 NOT NULL,
-    FOREIGN KEY (userID) REFERENCES USERS (ID)
+    ID      SERIAL PRIMARY KEY,
+    posts   int DEFAULT 0,
+    slug    citext UNIQUE NOT NULL,
+    threads int DEFAULT 0,
+    title   varchar(127)  NOT NULL,
+    userID  int           NOT NULL,
+    FOREIGN KEY (userID) REFERENCES USERS (ID) ON DELETE CASCADE
 );
-    CREATE TABLE THREADS
+
+CREATE TABLE THREADS
 (
     ID      SERIAL PRIMARY KEY,
-    title   varchar(127)        NOT NULL,
-    created timestamp,
-    message varchar(511)        NOT NULL,
-    slug    varchar(127) UNIQUE NOT NULL,
-    votes   int default 0       NOT NULL,
-    userID  int                 NOT NULL,
-    forumID int                 NOT NULL,
---     FOREIGN KEY (userID) REFERENCES USERS (ID),
-    FOREIGN KEY (forumID) REFERENCES FORUMS (ID)
+    title   varchar(127) NOT NULL,
+    created timestamptz,
+    message text         NOT NULL,
+    slug    citext UNIQUE,
+    votes   int default 0,
+    userID  int          NOT NULL,
+    forumID int          NOT NULL,
+    FOREIGN KEY (userID) REFERENCES USERS (ID) ON DELETE CASCADE,
+    FOREIGN KEY (forumID) REFERENCES FORUMS (ID) ON DELETE CASCADE /*,
+    UNIQUE (forumID, slug)*/
 );
 
 CREATE TABLE POSTS
 (
     ID           SERIAL PRIMARY KEY,
-    created      timestamp,
-    message      varchar(511)       NOT NULL,
+    created      timestamp          NOT NULL,
+    message      text               NOT NULL,
     isEdited     bool default false NOT NULL,
-    parentPostID int  default 0,
+    parentPostID int                NOT NULL,
+    parents      integer[],
     userID       int                NOT NULL,
+    threadID     int                NOT NULL,
     forumID      int                NOT NULL,
-    FOREIGN KEY (parentPostID) REFERENCES POSTS (ID),
-    FOREIGN KEY (userID) REFERENCES USERS (ID),
-    FOREIGN KEY (forumID) REFERENCES FORUMS (ID)
-)
+    FOREIGN KEY (threadID) REFERENCES THREADS (ID) ON DELETE CASCADE,
+    FOREIGN KEY (userID) REFERENCES USERS (ID) ON DELETE CASCADE,
+    FOREIGN KEY (forumID) REFERENCES FORUMS (ID) ON DELETE CASCADE
+);
+
+CREATE TABLE VOTES
+(
+    ID       SERIAL PRIMARY KEY,
+    vote     boolean NOT NULL default true,
+    userID   int     NOT NULL,
+    threadID int     NOT NULL,
+    FOREIGN KEY (userID) REFERENCES USERS (ID) ON DELETE CASCADE,
+    FOREIGN KEY (threadID) REFERENCES THREADS (ID) ON DELETE CASCADE,
+    CONSTRAINT user_thread UNIQUE (userID, threadID)
+);
+
+CREATE OR REPLACE FUNCTION increment(column_name text, forum_id integer) RETURNS void AS
+$func$
+BEGIN
+    EXECUTE format('UPDATE forums SET %I = %s + 1 WHERE ID = %s;', column_name, column_name, forum_id);
+END;
+$func$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION handle_new_post() RETURNS trigger AS
+$handle_new_post$
+DECLARE
+    old_parents integer[] := '{}';
+BEGIN
+    PERFORM increment('posts', NEW.forumID);
+    SELECT parents INTO old_parents FROM posts WHERE id = NEW.parentPostID;
+    UPDATE posts SET parents = array_append(old_parents, NEW.ID) WHERE ID = NEW.ID;
+    RETURN NULL;
+END;
+$handle_new_post$ LANGUAGE plpgsql;
+CREATE TRIGGER handle_new_post
+    AFTER INSERT
+    ON posts
+    FOR EACH ROW
+EXECUTE PROCEDURE handle_new_post();
+
+CREATE OR REPLACE FUNCTION increment_threads() RETURNS trigger AS
+$increment_threads$
+BEGIN
+    PERFORM increment('threads', NEW.forumID);
+    RETURN NULL;
+END;
+$increment_threads$ LANGUAGE plpgsql;
+CREATE TRIGGER increment_threads
+    AFTER INSERT
+    ON threads
+    FOR EACH ROW
+EXECUTE PROCEDURE increment_threads();
