@@ -1,0 +1,13 @@
+GET http://localhost:5000/api/post/1/details?related=user%2Cthread
+Accept: application/json
+###
+GET http://localhost:5000/api/post/1/details?related=user%2Cthread%2Cforum
+Accept: application/json
+###
+GET http://localhost:5000/api/post/1/details?related=user%2Cthread%2Cforum
+Accept: application/json
+###
+GET http://localhost:5000/api/post/1/details?related
+Accept: application/json
+
+###
