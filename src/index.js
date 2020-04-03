@@ -25,7 +25,7 @@ const express = require('express');
     const app = express();
     app.use(express.json()); // for parsing application/json
 
-    const port = 5001;
+    const port = 5000;
     app.listen(port, () => {
         console.log('Listening on port', port);
     });
