@@ -47,7 +47,7 @@ module.exports = class threadHandlers {
         const parentsSet = new Set();
         let currentTime, parentIDs;
         try {
-            currentTime = (await this.db.query({text: 'SELECT NOW() AS time;'})).rows[0].time;
+            currentTime = (await this.db.query({text: 'SELECT CURRENT_TIMESTAMP AS time;'})).rows[0].time;
             const query = `SELECT ID, parents
                            FROM posts
                            WHERE threadID = $1`;
@@ -57,7 +57,7 @@ module.exports = class threadHandlers {
                 const query = `SELECT forumID as forum
                                FROM threads
                                WHERE ID = $1`;
-                const queryResult = await this.db.query({text: query, values: [threadID]})
+                const queryResult = await this.db.query({text: query, values: [threadID]});
                 if (queryResult.rows.length === 0) {
                     res.status(404).send(new Error('No such thread'));
                     return;
@@ -76,52 +76,60 @@ module.exports = class threadHandlers {
             post.isEdited = false;
             // parentsSet.add(post.parent || 0);
         });
+
+        const getValuesString = (newPost) => {
+            return `($1, '${newPost.message}', ${newPost.parent}, ${newPost.threadID}, ${newPost.forumID}, (
+                SELECT ID
+                FROM users u
+                WHERE u.nickname = '${newPost.author}'
+            )),`;
+        };
+        let insertQuery = 'INSERT INTO posts (created, message, parentPostID, threadID, forumID, userID) VALUES ';
+
         for (let post of newPosts) {
             if (!parentsSet.has(post.parent) && post.parent) {
                 res.status(409).send(new Error('Some post has no parent post'));
                 return;
             }
             post.parent = post.parent || 0;
+            insertQuery += getValuesString(post);
         }
-        const insertQuery = `INSERT INTO posts (created, message, parentPostID, threadID, forumID, userID)
-                             VALUES ($1, $2, $3, $4, $5, (
-                                 SELECT ID
-                                 FROM users u
-                                 WHERE u.nickname = $6
-                             ));`;
-        const selectQuery = `SELECT p.ID,
-                                    created,
-                                    message,
-                                    p.threadID   AS thread,
-                                    f.slug       AS forum,
-                                    nickname     AS author,
-                                    parentPostID AS parent
-                             FROM posts p
-                                      JOIN users u ON (currval('posts_id_seq') = p.ID) AND (p.userID = u.id)
-                                      JOIN forums f ON (p.forumID = f.id);`;
-        try {
-            for (let i = 0; i !== newPosts.length; i++) {
-                const queryValues = [
-                    newPosts[i].created,
-                    newPosts[i].message,
-                    newPosts[i].parent,
-                    newPosts[i].threadID,
-                    newPosts[i].forumID,
-                    newPosts[i].author
-                ];
-                await this.db.query({text: insertQuery, values: queryValues});
-                newPosts[i] = (await this.db.query({text: selectQuery})).rows[0];
-            }
-            res.status(201).send(newPosts);
-        } catch (err) {
-            if (err.code === '23502') {
-                res.status(404).send(new Error('User not found'));
-            } else {
-                console.log(err);
-                console.log(insertQuery);
-                res.status(500).send(err);
+        if (newPosts.length) {
+            insertQuery = insertQuery.slice(0, -1) + ' RETURNING id;';
+            try {
+                const insertResult = await this.db.query({text: insertQuery, values: [currentTime]});
+                if (insertResult.rows) {
+                    const ids = insertResult.rows.map(row => row.id);
+                    const selectQuery = `SELECT p.ID,
+                                                created,
+                                                message,
+                                                p.threadID   AS thread,
+                                                f.slug       AS forum,
+                                                nickname     AS author,
+                                                parentPostID AS parent
+                                         FROM posts p
+                                                  JOIN users u ON (p.userID = u.id)
+                                                  JOIN forums f ON (p.forumID = f.id)
+                                         WHERE p.id IN (${ids.slice()})
+                                         ORDER BY p.ID;`;
+                    console.log('ZALUPA');
+                    console.log(selectQuery);
+                    const selectResult = await this.db.query({text: selectQuery});
+                    res.status(201).send(selectResult.rows.sort((a,b) => a.id > b.id));
+                    return;
+                }
+            } catch (err) {
+                if (err.code === '23502') {
+                    res.status(404).send(new Error('User not found'));
+                } else {
+                    console.log(err);
+                    console.log(insertQuery);
+                    res.status(500).send(err);
+                }
+                return;
             }
         }
+        res.status(201).send([]);
     };
 
     getThreadDetails = async (req, res) => {

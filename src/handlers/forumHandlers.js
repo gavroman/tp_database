@@ -59,7 +59,8 @@ module.exports = class forumHandlers {
                              VALUES ((SELECT ID FROM users WHERE nickname = $1),
                                $2,
                                (SELECT ID FROM forums WHERE slug = $3),
-                               $4, ${threadSlug} $5, $6);`;
+                               $4, ${threadSlug} $5, $6)
+                             RETURNING id`;
 
         const selectQuery = `SELECT nickname AS author,
                                     f.slug   AS forum,
@@ -69,7 +70,7 @@ module.exports = class forumHandlers {
                                     t.slug   AS slug,
                                     t.title  AS title
                              FROM threads t
-                                      JOIN forums f ON (t.forumID = f.id)
+                                      JOIN forums f ON (t.forumID = f.id) AND (t.id = $1)
                                       JOIN users u ON (t.userID = u.id)
                              ORDER BY ID DESC
                              LIMIT 1;`;
@@ -83,10 +84,15 @@ module.exports = class forumHandlers {
         ];
 
         try {
-            await this.db.query({text: insertQuery, values: values});
-            const querResult = await this.db.query({text: selectQuery});
-            res.status(201).send(querResult.rows[0]);
+            const insertResult = await this.db.query({text: insertQuery, values: values});
+            const threadID = insertResult.rows[0].id;
+            if (threadID) {
+                console.log('threadID', threadID);
+                const queryResult = await this.db.query({text: selectQuery, values: [threadID]});
+                res.status(201).send(queryResult.rows[0]);
+            }
         } catch (err) {
+            console.log(err.code);
             switch (err.code) {
                 case '23505':
                     const query = `SELECT u.nickname AS author, created, f.slug AS forum, t.id, message, t.slug AS slug, t.title
