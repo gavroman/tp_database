@@ -48,7 +48,7 @@ module.exports = class threadHandlers {
         let currentTime, parentIDs;
         try {
             currentTime = (await this.db.query({text: 'SELECT CURRENT_TIMESTAMP AS time;'})).rows[0].time;
-            const query = `SELECT ID, parents
+            const query = `SELECT ID
                            FROM posts
                            WHERE threadID = $1`;
             parentIDs = (await this.db.query({text: query, values: [threadID]})).rows;
@@ -56,7 +56,8 @@ module.exports = class threadHandlers {
             if (forumID === undefined) {
                 const query = `SELECT forumID as forum
                                FROM threads
-                               WHERE ID = $1`;
+                               WHERE ID = $1
+                               LIMIT 1`;
                 const queryResult = await this.db.query({text: query, values: [threadID]});
                 if (queryResult.rows.length === 0) {
                     res.status(404).send(new Error('No such thread'));
@@ -68,24 +69,15 @@ module.exports = class threadHandlers {
             res.status(500).end(err);
         }
         const newPosts = req.body;
-
-        newPosts.forEach((post) => {
-            post.created = currentTime;
-            post.threadID = threadID;
-            post.forumID = forumID;
-            post.isEdited = false;
-            // parentsSet.add(post.parent || 0);
-        });
-
         const getValuesString = (newPost) => {
-            return `($1, '${newPost.message}', ${newPost.parent}, ${newPost.threadID}, ${newPost.forumID}, (
+            return `($1, '${newPost.message}', ${newPost.parent || 0}, ${threadID}, ${forumID}, (
                 SELECT ID
                 FROM users u
                 WHERE u.nickname = '${newPost.author}'
+                LIMIT 1
             )),`;
         };
         let insertQuery = 'INSERT INTO posts (created, message, parentPostID, threadID, forumID, userID) VALUES ';
-
         for (let post of newPosts) {
             if (!parentsSet.has(post.parent) && post.parent) {
                 res.status(409).send(new Error('Some post has no parent post'));
@@ -112,8 +104,6 @@ module.exports = class threadHandlers {
                                                   JOIN forums f ON (p.forumID = f.id)
                                          WHERE p.id IN (${ids.slice()})
                                          ORDER BY p.ID;`;
-                    // console.log('ZALUPA');
-                    // console.log(selectQuery);
                     const selectResult = await this.db.query({text: selectQuery});
                     res.status(201).send(selectResult.rows.sort((a, b) => a.id > b.id));
                     return;
@@ -123,7 +113,6 @@ module.exports = class threadHandlers {
                     res.status(404).send(new Error('User not found'));
                 } else {
                     console.log(err);
-                    // console.log(insertQuery);
                     res.status(500).send(err);
                 }
                 return;
@@ -318,7 +307,8 @@ module.exports = class threadHandlers {
                                 FROM votes v
                                          JOIN users u ON (u.nickname = $1)
                                     AND (v.userID = u.ID)
-                                    AND (v.threadID = $2) LIMIT 1;`;
+                                    AND (v.threadID = $2)
+                                LIMIT 1;`;
         let oldVote;
         try {
             const queryVoteCheckResult = await this.db.query({text: checkVoteQuery, values: [nickname, threadID]});
@@ -358,7 +348,8 @@ module.exports = class threadHandlers {
                                     votes
                              FROM threads t
                                       JOIN forums f ON (t.forumID = f.ID) AND (t.Id = $1)
-                                      JOIN users u ON (t.userID = u.ID) LIMIT 1;`;
+                                      JOIN users u ON (t.userID = u.ID)
+                             LIMIT 1;`;
         if (promises) {
             try {
                 await Promise.all(promises);

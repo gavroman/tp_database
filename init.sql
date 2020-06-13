@@ -74,6 +74,8 @@ CREATE TABLE VOTES
     CONSTRAINT user_thread UNIQUE (userID, threadID)
 );
 
+CREATE INDEX users_nickname ON users(nickname);
+
 CREATE OR REPLACE FUNCTION increment(column_name text, forum_id integer) RETURNS void AS
 $func$
 BEGIN
