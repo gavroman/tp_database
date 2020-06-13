@@ -112,10 +112,10 @@ module.exports = class threadHandlers {
                                                   JOIN forums f ON (p.forumID = f.id)
                                          WHERE p.id IN (${ids.slice()})
                                          ORDER BY p.ID;`;
-                    console.log('ZALUPA');
-                    console.log(selectQuery);
+                    // console.log('ZALUPA');
+                    // console.log(selectQuery);
                     const selectResult = await this.db.query({text: selectQuery});
-                    res.status(201).send(selectResult.rows.sort((a,b) => a.id > b.id));
+                    res.status(201).send(selectResult.rows.sort((a, b) => a.id > b.id));
                     return;
                 }
             } catch (err) {
@@ -123,7 +123,7 @@ module.exports = class threadHandlers {
                     res.status(404).send(new Error('User not found'));
                 } else {
                     console.log(err);
-                    console.log(insertQuery);
+                    // console.log(insertQuery);
                     res.status(500).send(err);
                 }
                 return;
@@ -332,28 +332,21 @@ module.exports = class threadHandlers {
         }
         const insertOrUpdateVotesQuery = `insert
                                           into votes(userID, threadID, vote)
-                                          VALUES ((SELECT ID FROM users WHERE nickname = $1), $2, $3)
+                                          VALUES ((SELECT ID FROM users WHERE nickname = $1 LIMIT 1), $2, $3)
                                           ON CONFLICT ON CONSTRAINT user_thread DO UPDATE SET vote = $3`;
         const updateThreadsQuery = `UPDATE threads
                                     SET votes = votes + $2
                                     WHERE ID = $1;`;
-
+        let updateThreadPromise;
+        const promises = [];
         if (!oldVote || (oldVote && oldVote.vote !== newVote)) {
             if (oldVote && oldVote.vote !== newVote) {
                 voice *= 2;
             }
-            try {
-                await this.db.query({text: insertOrUpdateVotesQuery, values: [nickname, threadID, newVote]});
-                await this.db.query({text: updateThreadsQuery, values: [threadID, voice]});
-            } catch (err) {
-                if (err.code === '23503' || err.code === '23502') {
-                    res.status(404).send(new Error('No such thread or user'));
-                    return;
-                } else {
-                    console.log(err);
-                    res.status(500).send(err);
-                }
-            }
+            promises.push(
+                this.db.query({text: updateThreadsQuery, values: [threadID, voice]}),
+                this.db.query({text: insertOrUpdateVotesQuery, values: [nickname, threadID, newVote]})
+            );
         }
         const selectQuery = `SELECT u.nickname AS author,
                                     created,
@@ -366,6 +359,19 @@ module.exports = class threadHandlers {
                              FROM threads t
                                       JOIN forums f ON (t.forumID = f.ID) AND (t.Id = $1)
                                       JOIN users u ON (t.userID = u.ID);`;
+        if (promises) {
+            try {
+                await Promise.all(promises);
+            } catch (err) {
+                if (err.code === '23503' || err.code === '23502') {
+                    res.status(404).send(new Error('No such thread or user'));
+                    return;
+                } else {
+                    console.log(err);
+                    res.status(500).send(err);
+                }
+            }
+        }
         try {
             const queryResult = await this.db.query({text: selectQuery, values: [threadID]});
             if (queryResult.rows.length === 0) {

@@ -28,6 +28,14 @@ RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PGVER/main/pg_hba
 # And add ``listen_addresses`` to ``/etc/postgresql/$PGVER/main/postgresql.conf``
 RUN echo "listen_addresses='*'" >> /etc/postgresql/$PGVER/main/postgresql.conf
 
+# Turn off synchronous_commit and fsync to speed up DB filling
+RUN echo "synchronous_commit = off" >> /etc/postgresql/$PGVER/main/postgresql.conf
+RUN echo "fsync = off" >> /etc/postgresql/$PGVER/main/postgresql.conf
+
+# Increase shared buffers size
+RUN echo "shared_buffers = 400MB" >> /etc/postgresql/$PGVER/main/postgresql.conf
+RUN echo "wal_writer_delay = 10000ms" >> /etc/postgresql/$PGVER/main/postgresql.conf
+
 # Expose the PostgreSQL port
 EXPOSE 5432
 

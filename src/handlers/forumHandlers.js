@@ -35,8 +35,6 @@ module.exports = class forumHandlers {
                         queryResult.rows[0].user = body.user;
                         res.status(409).send(queryResult.rows[0]);
                     } catch (err) {
-                        console.log('23505');
-
                         res.status(500).send(err);
                     }
                     break;
@@ -87,12 +85,10 @@ module.exports = class forumHandlers {
             const insertResult = await this.db.query({text: insertQuery, values: values});
             const threadID = insertResult.rows[0].id;
             if (threadID) {
-                console.log('threadID', threadID);
                 const queryResult = await this.db.query({text: selectQuery, values: [threadID]});
                 res.status(201).send(queryResult.rows[0]);
             }
         } catch (err) {
-            console.log(err.code);
             switch (err.code) {
                 case '23505':
                     const query = `SELECT u.nickname AS author, created, f.slug AS forum, t.id, message, t.slug AS slug, t.title
