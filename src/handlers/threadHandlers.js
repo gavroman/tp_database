@@ -318,7 +318,7 @@ module.exports = class threadHandlers {
                                 FROM votes v
                                          JOIN users u ON (u.nickname = $1)
                                     AND (v.userID = u.ID)
-                                    AND (v.threadID = $2);`;
+                                    AND (v.threadID = $2) LIMIT 1;`;
         let oldVote;
         try {
             const queryVoteCheckResult = await this.db.query({text: checkVoteQuery, values: [nickname, threadID]});
@@ -358,7 +358,7 @@ module.exports = class threadHandlers {
                                     votes
                              FROM threads t
                                       JOIN forums f ON (t.forumID = f.ID) AND (t.Id = $1)
-                                      JOIN users u ON (t.userID = u.ID);`;
+                                      JOIN users u ON (t.userID = u.ID) LIMIT 1;`;
         if (promises) {
             try {
                 await Promise.all(promises);
