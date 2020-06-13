@@ -75,6 +75,9 @@ CREATE TABLE VOTES
 );
 
 CREATE INDEX users_nickname ON users(nickname);
+CREATE INDEX posts_thread ON posts(threadID, id);
+CREATE INDEX tread_forum ON threads(forumID, id);
+
 
 CREATE OR REPLACE FUNCTION increment(column_name text, forum_id integer) RETURNS void AS
 $func$
