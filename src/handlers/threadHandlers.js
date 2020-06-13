@@ -87,25 +87,14 @@ module.exports = class threadHandlers {
             insertQuery += getValuesString(post);
         }
         if (newPosts.length) {
-            insertQuery = insertQuery.slice(0, -1) + ' RETURNING id;';
+            insertQuery = insertQuery.slice(0, -1) + ` RETURNING id,created,message,threadID AS thread,
+                (SELECT nickname FROM users WHERE id = userid) AS author,
+                (SELECT slug FROM forums WHERE id = forumid) AS forum,
+                parentPostID AS parent;`;
             try {
                 const insertResult = await this.db.query({text: insertQuery, values: [currentTime]});
                 if (insertResult.rows) {
-                    const ids = insertResult.rows.map(row => row.id);
-                    const selectQuery = `SELECT p.ID,
-                                                created,
-                                                message,
-                                                p.threadID   AS thread,
-                                                f.slug       AS forum,
-                                                nickname     AS author,
-                                                parentPostID AS parent
-                                         FROM posts p
-                                                  JOIN users u ON (p.userID = u.id)
-                                                  JOIN forums f ON (p.forumID = f.id)
-                                         WHERE p.id IN (${ids.slice()})
-                                         ORDER BY p.ID;`;
-                    const selectResult = await this.db.query({text: selectQuery});
-                    res.status(201).send(selectResult.rows.sort((a, b) => a.id > b.id));
+                    res.status(201).send(insertResult.rows);
                     return;
                 }
             } catch (err) {

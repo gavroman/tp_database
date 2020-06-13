@@ -15,7 +15,7 @@ CREATE EXTENSION IF NOT EXISTS citext;
 CREATE TABLE USERS
 (
     ID       SERIAL PRIMARY KEY,
-    nickname citext COLLATE "C" UNIQUE ,
+    nickname citext COLLATE "C" UNIQUE,
     email    citext UNIQUE NOT NULL,
     fullName varchar(127)  NOT NULL,
     about    text
@@ -74,9 +74,9 @@ CREATE TABLE VOTES
     CONSTRAINT user_thread UNIQUE (userID, threadID)
 );
 
-CREATE INDEX users_nickname ON users(nickname);
-CREATE INDEX posts_thread ON posts(threadID, id);
-CREATE INDEX tread_forum ON threads(forumID, id);
+CREATE INDEX users_nickname ON users (nickname);
+CREATE INDEX posts_thread ON posts (threadID, id);
+CREATE INDEX tread_forum ON threads (forumID, id);
 
 
 CREATE OR REPLACE FUNCTION increment(column_name text, forum_id integer) RETURNS void AS
@@ -92,7 +92,7 @@ DECLARE
     old_parents integer[] := '{}';
 BEGIN
     PERFORM increment('posts', NEW.forumID);
-    SELECT parents INTO old_parents FROM posts WHERE id = NEW.parentPostID;
+    SELECT parents INTO old_parents FROM posts WHERE id = NEW.parentPostID LIMIT 1;
     UPDATE posts SET parents = array_append(old_parents, NEW.ID) WHERE ID = NEW.ID;
     RETURN NULL;
 END;
