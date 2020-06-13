@@ -52,7 +52,7 @@ CREATE TABLE POSTS
     ID           SERIAL PRIMARY KEY,
     created      timestamp          NOT NULL,
     message      text               NOT NULL,
-    isEdited     bool default false NOT NULL,
+    "isEdited"   bool default false NOT NULL,
     parentPostID int                NOT NULL,
     parents      integer[],
     userID       int                NOT NULL,
@@ -74,9 +74,13 @@ CREATE TABLE VOTES
     CONSTRAINT user_thread UNIQUE (userID, threadID)
 );
 
-CREATE INDEX users_nickname ON users (nickname);
-CREATE INDEX posts_thread ON posts (threadID, id);
-CREATE INDEX tread_forum ON threads (forumID, id);
+CREATE INDEX usersNickname ON users (nickname);
+CREATE INDEX postsThread ON posts (threadID, id);
+CREATE INDEX treadsForum ON threads (forumID, id);
+CREATE UNIQUE INDEX threadsSlug ON threads (slug);
+CREATE INDEX threadsForumCreated ON threads (forumID, created);
+CREATE INDEX postsThreadPathId ON posts(threadID, parents, id);
+CREATE INDEX postsThreadParentId ON posts(threadID, parentPostID, id);
 
 
 CREATE OR REPLACE FUNCTION increment(column_name text, forum_id integer) RETURNS void AS

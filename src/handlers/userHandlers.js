@@ -16,7 +16,8 @@ module.exports = class UserHandlers {
             res.status(201).send(body);
         } catch (err) {
             if (err.code === '23505') {
-                const query = 'SELECT nickname, email, fullname, about FROM users WHERE nickname = $1 or email = $2;';
+                const query = 'SELECT nickname, email, fullname, about FROM users WHERE nickname = $1 or email = $2' +
+                    ' LIMIT 2;';
                 try {
                     const queryResult = await this.db.query({text: query, values: [nickname, body.email]});
                     res.status(409).send(queryResult.rows);
@@ -31,7 +32,7 @@ module.exports = class UserHandlers {
 
     getUser = async (req, res) => {
         const nickname = req.params.nickname;
-        const query = 'SELECT nickname, email, fullname, about FROM users WHERE nickname = $1';
+        const query = 'SELECT nickname, email, fullname, about FROM users WHERE nickname = $1 LIMIT 1';
 
         try {
             let queryResult = await this.db.query({text: query, values: [nickname]});
@@ -48,7 +49,7 @@ module.exports = class UserHandlers {
     updateUser = async (req, res) => {
         const nickname = req.params.nickname;
         let body = req.body;
-        let query = 'SELECT nickname, email, fullname, about FROM users WHERE nickname = $1';
+        let query = 'SELECT nickname, email, fullname, about FROM users WHERE nickname = $1 LIMIT 1';
 
         try {
             const queryResult = await this.db.query({text: query, values: [req.params.nickname]});

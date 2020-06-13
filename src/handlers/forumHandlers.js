@@ -13,15 +13,14 @@ module.exports = class forumHandlers {
                                  SELECT id
                                  FROM users
                                  WHERE nickname = $3
-                             ));`;
-        const querySelect = `SELECT slug, title, nickname as "user"
-                             FROM forums f
-                                      JOIN users u ON (u.id = f.userID) AND (slug = $1);`;
+                             ))
+                             RETURNING slug, title, (SELECT nickname FROM users WHERE id = userID LIMIT 1) AS "user";`;
 
         try {
-            await this.db.query({text: queryInsert, values: [body.slug, body.title, body.user]});
-            const queryResult = await this.db.query({text: querySelect, values: [body.slug]});
-            res.status(201).send(queryResult.rows[0]);
+            const result = await this.db.query({text: queryInsert, values: [body.slug, body.title, body.user]});
+            if (result.rows) {
+                res.status(201).send(result.rows[0]);
+            }
         } catch (err) {
             switch (err.code) {
                 case '23505':
@@ -58,20 +57,9 @@ module.exports = class forumHandlers {
                                $2,
                                (SELECT ID FROM forums WHERE slug = $3),
                                $4, ${threadSlug} $5, $6)
-                             RETURNING id`;
-
-        const selectQuery = `SELECT nickname AS author,
-                                    f.slug   AS forum,
-                                    t.id     AS ID,
-                                    created,
-                                    message,
-                                    t.slug   AS slug,
-                                    t.title  AS title
-                             FROM threads t
-                                      JOIN forums f ON (t.forumID = f.id) AND (t.id = $1)
-                                      JOIN users u ON (t.userID = u.id)
-                             ORDER BY ID DESC
-                             LIMIT 1;`;
+                             RETURNING id, created, message, slug, title,
+                                    (SELECT nickname FROM users WHERE id = userID LIMIT 1) AS author,
+                                    (SELECT slug FROM forums WHERE id = forumID LIMIT 1) AS forum;`;
         const values = [
             body.author,
             body.created,
@@ -80,13 +68,10 @@ module.exports = class forumHandlers {
             body.title,
             body.votes || 0,
         ];
-
         try {
             const insertResult = await this.db.query({text: insertQuery, values: values});
-            const threadID = insertResult.rows[0].id;
-            if (threadID) {
-                const queryResult = await this.db.query({text: selectQuery, values: [threadID]});
-                res.status(201).send(queryResult.rows[0]);
+            if (insertResult.rows) {
+                res.status(201).send(insertResult.rows[0]);
             }
         } catch (err) {
             switch (err.code) {
@@ -94,7 +79,7 @@ module.exports = class forumHandlers {
                     const query = `SELECT u.nickname AS author, created, f.slug AS forum, t.id, message, t.slug AS slug, t.title
                                FROM threads t
                                         JOIN forums f ON (t.forumID = f.ID) AND (t.slug = ${threadSlug.slice(0, -2)}) 
-                                        JOIN users u ON t.userID = u.ID;`;
+                                        JOIN users u ON t.userID = u.ID LIMIT 1;`;
                     try {
                         const queryResult = await this.db.query({text: query});
                         res.status(409).send(queryResult.rows[0]);
@@ -117,8 +102,8 @@ module.exports = class forumHandlers {
 
         const query = `SELECT posts, threads, slug, title, nickname as "user"
                        FROM forums f
-                                JOIN users u ON (u.id = f.userID) AND (slug = $1)`;
-
+                                JOIN users u ON (u.id = f.userID) AND (slug = $1)
+                       LIMIT 1`;
         try {
             const queryResult = await this.db.query({text: query, values: [slug]});
             if (queryResult.rows.length === 1) {

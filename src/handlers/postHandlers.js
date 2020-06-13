@@ -1,8 +1,6 @@
 const Error = require('../libs/errors.js');
 
 module.exports = class postHandlers {
-    all_data;
-
     constructor(db) {
         this.db = db;
     }
@@ -20,7 +18,7 @@ module.exports = class postHandlers {
                                     f.slug     AS forum,
                                     p.id       AS id,
                                     p.message  AS message,
-                                    p.isEdited AS isEdited,
+                                    p."isEdited" AS "isEdited",
                                     p.threadID AS thread
                              FROM posts p
                                       JOIN users u ON (p.ID = $1) AND (p.userID = u.ID)
@@ -29,7 +27,7 @@ module.exports = class postHandlers {
         const updateQuery = `UPDATE posts p
                              SET 
                                  message  = $2,
-                                 isEdited = CASE WHEN $2 = message THEN isEdited ELSE true END 
+                                 "isEdited" = CASE WHEN $2 = message THEN "isEdited" ELSE true END 
                              FROM (SELECT u.nickname AS author,
                                           p.created  AS created,
                                           f.slug     AS forum,
@@ -44,7 +42,7 @@ module.exports = class postHandlers {
                                  all_data.forum AS forum,
                                  p.id AS id,
                                  p.message AS message,
-                                 p.isEdited AS isEdited,
+                                 p."isEdited" AS "isEdited",
                                  p.threadID AS thread;`;
 
         const queryToExecute = (message) ? updateQuery : selectQuery;
@@ -52,8 +50,6 @@ module.exports = class postHandlers {
         const queryResult = await this.db.query({text: queryToExecute, values: values});
         try {
             if (queryResult.rows.length !== 0) {
-                queryResult.rows[0].isEdited = queryResult.rows[0].isedited;
-                delete queryResult.rows[0].isedited;
                 res.status(200).send(queryResult.rows[0]);
             } else {
                 res.status(404).send(new Error('No such post'));
@@ -80,7 +76,7 @@ module.exports = class postHandlers {
                                   f.slug     AS forum,
                                   p.id       AS id,
                                   p.message  AS message,
-                                  p.isEdited AS isEdited,
+                                  p."isEdited" AS "isEdited",
                                   p.threadID AS thread
                            FROM posts p
                                     JOIN users u ON (p.ID = $1) AND (p.userID = u.ID)
@@ -111,8 +107,6 @@ module.exports = class postHandlers {
         try {
             const queryPostResult = await this.db.query({text: queryPost, values: [postID]});
             if (queryPostResult.rows.length !== 0) {
-                queryPostResult.rows[0].isEdited = queryPostResult.rows[0].isedited;
-                delete queryPostResult.rows[0].isedited;
                 const result = {post: queryPostResult.rows[0]};
                 for (const relatedElem of relatedArray) {
                     switch (relatedElem) {

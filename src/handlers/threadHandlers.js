@@ -315,7 +315,7 @@ module.exports = class threadHandlers {
                                           ON CONFLICT ON CONSTRAINT user_thread DO UPDATE SET vote = $3`;
         const updateThreadsQuery = `UPDATE threads
                                     SET votes = votes + $2
-                                    WHERE ID = $1;`;
+                                    WHERE ID = $1`;
         let updateThreadPromise;
         const promises = [];
         if (!oldVote || (oldVote && oldVote.vote !== newVote)) {
