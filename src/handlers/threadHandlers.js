@@ -11,7 +11,8 @@ module.exports = class threadHandlers {
         if (isNaN(Number(slugOrId))) {
             const query = `SELECT ID
                            FROM threads
-                           WHERE slug = $1;`;
+                           WHERE slug = $1
+                           LIMIT 1;`;
             const queryResult = await this.db.query({text: query, values: [slugOrId]});
             if (queryResult.rows.length === 0) {
                 return NO_SUCH_THREAD;

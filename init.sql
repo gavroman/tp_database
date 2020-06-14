@@ -1,8 +1,8 @@
-DROP TABLE IF EXISTS VOTES;
-DROP TABLE IF EXISTS POSTS;
-DROP TABLE IF EXISTS THREADS;
-DROP TABLE IF EXISTS FORUMS;
-DROP TABLE IF EXISTS USERS;
+-- DROP TABLE IF EXISTS VOTES;
+-- DROP TABLE IF EXISTS POSTS;
+-- DROP TABLE IF EXISTS THREADS;
+-- DROP TABLE IF EXISTS FORUMS;
+-- DROP TABLE IF EXISTS USERS;
 
 DROP trigger IF EXISTS handle_new_post ON posts CASCADE;
 DROP FUNCTION IF EXISTS handle_new_post;
@@ -12,7 +12,7 @@ DROP FUNCTION IF EXISTS increment_threads;
 
 CREATE EXTENSION IF NOT EXISTS citext;
 
-CREATE TABLE USERS
+CREATE TABLE IF NOT EXISTS USERS
 (
     ID       SERIAL PRIMARY KEY,
     nickname citext COLLATE "C" UNIQUE,
@@ -21,7 +21,7 @@ CREATE TABLE USERS
     about    text
 );
 
-CREATE TABLE FORUMS
+CREATE TABLE IF NOT EXISTS FORUMS
 (
     ID      SERIAL PRIMARY KEY,
     posts   int DEFAULT 0,
@@ -32,7 +32,7 @@ CREATE TABLE FORUMS
     FOREIGN KEY (userID) REFERENCES USERS (ID) ON DELETE CASCADE
 );
 
-CREATE TABLE THREADS
+CREATE TABLE IF NOT EXISTS THREADS
 (
     ID      SERIAL PRIMARY KEY,
     title   varchar(127) NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE THREADS
     UNIQUE (forumID, slug)*/
 );
 
-CREATE TABLE POSTS
+CREATE TABLE IF NOT EXISTS POSTS
 (
     ID           SERIAL PRIMARY KEY,
     created      timestamp          NOT NULL,
@@ -63,7 +63,7 @@ CREATE TABLE POSTS
     FOREIGN KEY (forumID) REFERENCES FORUMS (ID) ON DELETE CASCADE
 );
 
-CREATE TABLE VOTES
+CREATE TABLE IF NOT EXISTS VOTES
 (
     ID       SERIAL PRIMARY KEY,
     vote     boolean NOT NULL default true,
@@ -74,13 +74,22 @@ CREATE TABLE VOTES
     CONSTRAINT user_thread UNIQUE (userID, threadID)
 );
 
-CREATE INDEX usersNickname ON users (nickname);
-CREATE INDEX postsThread ON posts (threadID, id);
-CREATE INDEX treadsForum ON threads (forumID, id);
-CREATE UNIQUE INDEX threadsSlug ON threads (slug);
-CREATE INDEX threadsForumCreated ON threads (forumID, created);
+CREATE INDEX treadUserForum ON threads (userID, forumID);
+CREATE INDEX postThread ON posts (threadID);
+CREATE INDEX postForum ON posts (forumID);
+CREATE INDEX postUser ON posts (userID);
+CREATE INDEX forumUser ON forums (userID);
+CREATE INDEX threadsForumCreated on threads (forumID, created);
+CREATE INDEX postsParent ON posts((parents[1]));
+CREATE INDEX postsThreadIdCreated ON posts(threadID, id, created);
+CREATE INDEX postsThreadCreatedId ON posts(threadID, created, id);
 CREATE INDEX postsThreadPathId ON posts(threadID, parents, id);
-CREATE INDEX postsThreadParentId ON posts(threadID, parentPostID, id);
+CREATE INDEX postsThreadParentId ON posts(threadID, parentpostid, id);
+
+
+
+
+
 
 
 CREATE OR REPLACE FUNCTION increment(column_name text, forum_id integer) RETURNS void AS

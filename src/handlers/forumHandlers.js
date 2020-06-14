@@ -102,7 +102,7 @@ module.exports = class forumHandlers {
 
         const query = `SELECT posts, threads, slug, title, nickname as "user"
                        FROM forums f
-                                JOIN users u ON (u.id = f.userID) AND (slug = $1)
+                                JOIN users u ON (slug = $1) AND (u.id = f.userID) 
                        LIMIT 1`;
         try {
             const queryResult = await this.db.query({text: query, values: [slug]});
@@ -150,7 +150,7 @@ module.exports = class forumHandlers {
                               t.title    AS title,
                               votes
                        FROM threads t
-                                JOIN forums f ON (t.forumID = f.ID) AND (f.slug = $1)
+                                JOIN forums f ON (f.slug = $1) AND (t.forumID = f.ID) 
                                 JOIN users u ON (t.userID = u.ID) ${since} ${order} ${limit};`;
         try {
             const queryResult = await this.db.query({text: query, values: [forumSlug]});

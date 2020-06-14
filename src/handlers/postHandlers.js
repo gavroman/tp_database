@@ -66,6 +66,9 @@ module.exports = class postHandlers {
             res.status(404).send(new Error('No such post'));
             return;
         }
+
+        console.log('Realted', req.query.related);
+
         const relatedArray = (req.query.related) ? req.query.related.split(',') : [''];
         if (relatedArray.length === 1 && relatedArray[0] === '' && req.query.related) {
             relatedArray[0] = 'all'

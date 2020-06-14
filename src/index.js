@@ -1,9 +1,9 @@
 const fs = require('fs');
-const {Client} = require('pg');
+const {Pool} = require('pg');
 const express = require('express');
 
 (async () => {
-    const db = new Client({
+    const db = new Pool({
         host: 'localhost',
         port: 5432,
         user: 'tp_bd_user',
@@ -37,29 +37,29 @@ const express = require('express');
     const ServiceHandlers = require('./handlers/serviceHandlers.js');
 
     let userHandlers = new UserHandlers(db);
-    app.post('/api/user/:nickname/create', userHandlers.createUser);
-    app.get('/api/user/:nickname/profile', userHandlers.getUser);
-    app.post('/api/user/:nickname/profile', userHandlers.updateUser);
+    app.post('/api/user/:nickname/create', (req, res) => {console.log('/api/user/:nickname/create'); userHandlers.createUser(req, res)});
+    app.get('/api/user/:nickname/profile', (req, res) => {console.log('/api/user/:nickname/profile'); userHandlers.getUser(req, res)});
+    app.post('/api/user/:nickname/profile', (req, res) => {console.log('/api/user/:nickname/profile'); userHandlers.updateUser(req, res)});
 
     let forumHandlers = new ForumHandlers(db);
-    app.post('/api/forum/create', forumHandlers.createForum);
-    app.post('/api/forum/:slug/create', forumHandlers.createForumThread);
-    app.get('/api/forum/:slug/details', forumHandlers.getForumDetails);
-    app.get('/api/forum/:slug/threads', forumHandlers.getForumThreads);
-    app.get('/api/forum/:slug/users', forumHandlers.getForumUsers);
+    app.post('/api/forum/create', (req, res) => {console.log('/api/forum/create'); forumHandlers.createForum(req, res)});
+    app.post('/api/forum/:slug/create', (req, res) => {console.log('/api/forum/:slug/create'); forumHandlers.createForumThread(req, res)});
+    app.get('/api/forum/:slug/details', (req, res) => {console.log('/api/forum/:slug/details'); forumHandlers.getForumDetails(req, res)});
+    app.get('/api/forum/:slug/threads', (req, res) => {console.log('/api/forum/:slug/threads'); forumHandlers.getForumThreads(req, res)});
+    app.get('/api/forum/:slug/users', (req, res) => {console.log('/api/forum/:slug/users'); forumHandlers.getForumUsers(req, res)});
 
     let postHandlers = new PostHandlers(db);
-    app.get('/api/post/:id/details', postHandlers.getPosts);
-    app.post('/api/post/:id/details', postHandlers.updatePost);
+    app.get('/api/post/:id/details', (req, res) => {console.log('/api/post/:id/details'); postHandlers.getPosts(req, res)});
+    app.post('/api/post/:id/details', (req, res) => {console.log('/api/post/:id/details'); postHandlers.updatePost(req, res)});
 
     let threadHandlers = new ThreadHandlers(db);
-    app.post('/api/thread/:slug_or_id/create', threadHandlers.createThreadPosts);
-    app.get('/api/thread/:slug_or_id/details', threadHandlers.getThreadDetails);
-    app.post('/api/thread/:slug_or_id/details', threadHandlers.updateThreadDetails);
-    app.get('/api/thread/:slug_or_id/posts', threadHandlers.getThreadPosts);
-    app.post('/api/thread/:slug_or_id/vote', threadHandlers.voteThread);
+    app.post('/api/thread/:slug_or_id/create', (req, res) => {console.log('/api/thread/:slug_or_id/create'); threadHandlers.createThreadPosts(req, res)});
+    app.get('/api/thread/:slug_or_id/details', (req, res) => {console.log('/api/thread/:slug_or_id/details'); threadHandlers.getThreadDetails(req, res)});
+    app.post('/api/thread/:slug_or_id/details', (req, res) => {console.log('/api/thread/:slug_or_id/details'); threadHandlers.updateThreadDetails(req, res)});
+    app.get('/api/thread/:slug_or_id/posts', (req, res) => {console.log('/api/thread/:slug_or_id/posts'); threadHandlers.getThreadPosts(req, res)});
+    app.post('/api/thread/:slug_or_id/vote', (req, res) => {console.log('/api/thread/:slug_or_id/vote'); threadHandlers.voteThread(req, res)});
 
     let serviceHandlers = new ServiceHandlers(db);
-    app.post('/api/service/clear', serviceHandlers.clearAllData);
-    app.get('/api/service/status', serviceHandlers.getInfo);
+    app.post('/api/service/clear', (req, res) => {console.log('/api/service/clear'); serviceHandlers.clearAllData(req, res)});
+    app.get('/api/service/status', (req, res) => {console.log('/api/service/status'); serviceHandlers.getInfo(req, res)});
 })();
