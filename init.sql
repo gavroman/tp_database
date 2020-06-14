@@ -74,22 +74,15 @@ CREATE TABLE IF NOT EXISTS VOTES
     CONSTRAINT user_thread UNIQUE (userID, threadID)
 );
 
-CREATE INDEX treadUserForum ON threads (userID, forumID);
-CREATE INDEX postThread ON posts (threadID);
-CREATE INDEX postForum ON posts (forumID);
-CREATE INDEX postUser ON posts (userID);
-CREATE INDEX forumUser ON forums (userID);
-CREATE INDEX threadsForumCreated on threads (forumID, created);
-CREATE INDEX postsParent ON posts((parents[1]));
-CREATE INDEX postsThreadIdCreated ON posts(threadID, id, created);
-CREATE INDEX postsThreadCreatedId ON posts(threadID, created, id);
-CREATE INDEX postsThreadPathId ON posts(threadID, parents, id);
-CREATE INDEX postsThreadParentId ON posts(threadID, parentpostid, id);
-
-
-
-
-
+CREATE INDEX IF NOT EXISTS forumUser ON forums (userID);
+CREATE INDEX IF NOT EXISTS postForum ON posts (forumID);
+CREATE INDEX IF NOT EXISTS postThread ON posts (threadID);
+CREATE INDEX IF NOT EXISTS postUser ON posts (userID);
+CREATE INDEX IF NOT EXISTS forumtSlug ON forums (slug, id);
+CREATE INDEX IF NOT EXISTS postsThreadCreatedId ON posts(threadID, created, id);
+CREATE INDEX IF NOT EXISTS postsThreadPathId ON posts(threadID, parents, id);
+CREATE INDEX IF NOT EXISTS threadsForumCreated on threads (forumID, created);
+CREATE INDEX IF NOT EXISTS treadUserForum ON threads (userID, forumID);
 
 
 CREATE OR REPLACE FUNCTION increment(column_name text, forum_id integer) RETURNS void AS
