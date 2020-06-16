@@ -1,9 +1,9 @@
--- DROP TABLE IF EXISTS VOTES;
--- DROP TABLE IF EXISTS POSTS;
--- DROP TABLE IF EXISTS THREADS;
--- DROP TABLE IF EXISTS FORUMS;
--- DROP TABLE IF EXISTS USERS;
--- DROP TABLE IF EXISTS FORUMUSERS;
+DROP TABLE IF EXISTS VOTES;
+DROP TABLE IF EXISTS POSTS;
+DROP TABLE IF EXISTS THREADS;
+DROP TABLE IF EXISTS FORUMS;
+DROP TABLE IF EXISTS USERS;
+DROP TABLE IF EXISTS FORUMUSERS;
 
 
 DROP trigger IF EXISTS handle_new_post ON posts CASCADE;
@@ -124,19 +124,17 @@ $func$ LANGUAGE plpgsql;
 -- UPDATE POST PATH
 CREATE OR REPLACE FUNCTION update_post_path() RETURNS TRIGGER AS
 $$
+DECLARE
+    old_parents integer[] := '{}';
 BEGIN
     PERFORM increment('posts', NEW.forumID);
     IF NEW.parentPostID != 0 THEN
+        SELECT parents INTO old_parents FROM posts WHERE id = NEW.parentPostID LIMIT 1;
         UPDATE posts
         SET parents = array_append(old_parents, NEW.ID)
-        FROM (
-                 SELECT parents
-                 FROM posts
-                 WHERE id = NEW.parentPostId
-             ) AS old_parents
         WHERE posts.id = NEW.id;
     ELSE
-        UPDATE posts SET parents=ARRAY [NEW.id] WHERE id = NEW.id;
+        UPDATE posts SET parents = ARRAY [NEW.id] WHERE id = NEW.id;
     END IF;
     return NEW;
 END;
