@@ -13,21 +13,20 @@ module.exports = class postHandlers {
         }
         const message = req.body.message;
 
-        const selectQuery = `SELECT u.nickname AS author,
-                                    p.created  AS created,
-                                    f.slug     AS forum,
-                                    p.id       AS id,
-                                    p.message  AS message,
+        const selectQuery = `SELECT u.nickname   AS author,
+                                    p.created    AS created,
+                                    f.slug       AS forum,
+                                    p.id         AS id,
+                                    p.message    AS message,
                                     p."isEdited" AS "isEdited",
-                                    p.threadID AS thread
+                                    p.threadID   AS thread
                              FROM posts p
                                       JOIN users u ON (p.ID = $1) AND (p.userID = u.ID)
                                       JOIN forums f ON (f.ID = p.forumID);`;
 
         const updateQuery = `UPDATE posts p
-                             SET 
-                                 message  = $2,
-                                 "isEdited" = CASE WHEN $2 = message THEN "isEdited" ELSE true END 
+                             SET message    = $2,
+                                 "isEdited" = CASE WHEN $2 = message THEN "isEdited" ELSE true END
                              FROM (SELECT u.nickname AS author,
                                           p.created  AS created,
                                           f.slug     AS forum,
@@ -69,23 +68,25 @@ module.exports = class postHandlers {
 
         const relatedArray = (req.query.related) ? req.query.related.split(',') : [''];
         if (relatedArray.length === 1 && relatedArray[0] === '' && req.query.related) {
-            relatedArray[0] = 'all'
+            relatedArray[0] = 'all';
         }
 
-        const queryPost = `SELECT u.nickname AS author,
-                                  p.created  AS created,
-                                  f.slug     AS forum,
-                                  p.id       AS id,
-                                  p.message  AS message,
+        const queryPost = `SELECT u.nickname   AS author,
+                                  p.created    AS created,
+                                  f.slug       AS forum,
+                                  p.id         AS id,
+                                  p.message    AS message,
                                   p."isEdited" AS "isEdited",
-                                  p.threadID AS thread
+                                  p.threadID   AS thread
                            FROM posts p
                                     JOIN users u ON (p.ID = $1) AND (p.userID = u.ID)
-                                    JOIN forums f ON (p.forumID = f.ID)`;
+                                    JOIN forums f ON (p.forumID = f.ID)
+                           LIMIT 1`;
 
         const queryAuthor = `SELECT about, email, fullname, nickname
                              FROM users u
-                                      JOIN posts p ON (p.ID = $1) AND (u.ID = p.userID)`;
+                                      JOIN posts p ON (p.ID = $1) AND (u.ID = p.userID)
+                             LIMIT 1`;
 
         const queryThread = `SELECT u.nickname AS author,
                                     t.created  AS created,
@@ -98,12 +99,14 @@ module.exports = class postHandlers {
                              FROM threads t
                                       JOIN posts p ON (p.ID = $1) AND (p.threadID = t.ID)
                                       JOIN forums f ON (f.ID = t.forumID)
-                                      JOIN users u ON (u.ID = t.userID);`;
+                                      JOIN users u ON (u.ID = t.userID)
+                             LIMIT 1;`;
 
         const queryForum = `SELECT u.nickname AS "user", posts, slug, threads, title
                             FROM forums f
                                      JOIN posts p ON (p.ID = $1) AND (p.forumID = f.ID)
-                                     JOIN users u ON (f.userID = u.ID);`;
+                                     JOIN users u ON (f.userID = u.ID)
+                            LIMIT 1;`;
 
         try {
             const queryPostResult = await this.db.query({text: queryPost, values: [postID]});

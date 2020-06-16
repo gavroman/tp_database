@@ -3,6 +3,8 @@
 -- DROP TABLE IF EXISTS THREADS;
 -- DROP TABLE IF EXISTS FORUMS;
 -- DROP TABLE IF EXISTS USERS;
+-- DROP TABLE IF EXISTS FORUMUSERS;
+
 
 DROP trigger IF EXISTS handle_new_post ON posts CASCADE;
 DROP FUNCTION IF EXISTS handle_new_post;
@@ -63,6 +65,13 @@ CREATE TABLE IF NOT EXISTS POSTS
     FOREIGN KEY (forumID) REFERENCES FORUMS (ID) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS forumUsers
+(
+    forumID int NOT NULL,
+    userID  int NOT NULL,
+    unique (forumID, userID)
+);
+
 CREATE TABLE IF NOT EXISTS VOTES
 (
     ID       SERIAL PRIMARY KEY,
@@ -74,15 +83,16 @@ CREATE TABLE IF NOT EXISTS VOTES
     CONSTRAINT user_thread UNIQUE (userID, threadID)
 );
 
-CREATE INDEX IF NOT EXISTS forumUser ON forums (userID);
-CREATE INDEX IF NOT EXISTS postForum ON posts (forumID);
-CREATE INDEX IF NOT EXISTS postThread ON posts (threadID);
-CREATE INDEX IF NOT EXISTS postUser ON posts (userID);
-CREATE INDEX IF NOT EXISTS forumtSlug ON forums (slug, id);
-CREATE INDEX IF NOT EXISTS postsThreadCreatedId ON posts(threadID, created, id);
-CREATE INDEX IF NOT EXISTS postsThreadPathId ON posts(threadID, parents, id);
-CREATE INDEX IF NOT EXISTS threadsForumCreated on threads (forumID, created);
-CREATE INDEX IF NOT EXISTS treadUserForum ON threads (userID, forumID);
+create index if not exists postsForum on posts (forumID);
+create index if not exists postsUsers on posts (userID);
+
+create index if not exists postsParent on posts ((parents[1]));
+create index if not exists postsCreated on posts (created);
+create index if not exists threadForumID on threads (forumID);
+create index if not exists forumUsersID on threads (userID);
+
+CREATE INDEX if not exists postsThreadCreatedId ON posts(threadID, created, id);
+CREATE INDEX if not exists postsThreadPathId ON posts(threadID, parents, id);
 
 
 CREATE OR REPLACE FUNCTION increment(column_name text, forum_id integer) RETURNS void AS
@@ -92,22 +102,57 @@ BEGIN
 END;
 $func$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION handle_new_post() RETURNS trigger AS
-$handle_new_post$
-DECLARE
-    old_parents integer[] := '{}';
+--
+-- CREATE OR REPLACE FUNCTION handle_new_post() RETURNS trigger AS
+-- $handle_new_post$
+-- DECLARE
+--     old_parents integer[] := '{}';
+-- BEGIN
+--     PERFORM increment('posts', NEW.forumID);
+--     SELECT parents INTO old_parents FROM posts WHERE id = NEW.parentPostID LIMIT 1;
+--     UPDATE posts SET parents = array_append(old_parents, NEW.ID) WHERE ID = NEW.ID;
+--     RETURN NULL;
+-- END;
+-- $handle_new_post$ LANGUAGE plpgsql;
+-- CREATE TRIGGER handle_new_post
+--     AFTER INSERT
+--     ON posts
+--     FOR EACH ROW
+-- EXECUTE PROCEDURE handle_new_post();
+
+
+-- UPDATE POST PATH
+CREATE OR REPLACE FUNCTION update_post_path() RETURNS TRIGGER AS
+$$
 BEGIN
     PERFORM increment('posts', NEW.forumID);
-    SELECT parents INTO old_parents FROM posts WHERE id = NEW.parentPostID LIMIT 1;
-    UPDATE posts SET parents = array_append(old_parents, NEW.ID) WHERE ID = NEW.ID;
-    RETURN NULL;
+    IF NEW.parentPostID != 0 THEN
+        UPDATE posts
+        SET parents = array_append(old_parents, NEW.ID)
+        FROM (
+                 SELECT parents
+                 FROM posts
+                 WHERE id = NEW.parentPostId
+             ) AS old_parents
+        WHERE posts.id = NEW.id;
+    ELSE
+        UPDATE posts SET parents=ARRAY [NEW.id] WHERE id = NEW.id;
+    END IF;
+    return NEW;
 END;
-$handle_new_post$ LANGUAGE plpgsql;
-CREATE TRIGGER handle_new_post
+$$ LANGUAGE plpgsql;
+
+
+DROP TRIGGER IF EXISTS trigger_update_post_path ON posts;
+CREATE TRIGGER trigger_update_post_path
     AFTER INSERT
     ON posts
     FOR EACH ROW
-EXECUTE PROCEDURE handle_new_post();
+EXECUTE PROCEDURE update_post_path();
+
+
+
+
 
 CREATE OR REPLACE FUNCTION increment_threads() RETURNS trigger AS
 $increment_threads$
@@ -121,3 +166,29 @@ CREATE TRIGGER increment_threads
     ON threads
     FOR EACH ROW
 EXECUTE PROCEDURE increment_threads();
+
+
+-- UPDATE FORUM USERS
+create or replace function update_forum_users() RETURNS trigger AS
+$$
+begin
+    INSERT INTO forumusers (forumID, userID)
+    VALUES (NEW.forumID, NEW.userID)
+    ON CONFLICT DO NOTHING;
+    return NEW;
+end;
+$$ LANGUAGE plpgsql;
+
+drop trigger IF EXISTS trigger_update_forum_users ON threads;
+drop trigger IF EXISTS trigger_update_forum_users ON posts;
+
+create trigger trigger_update_forum_users
+    after insert
+    on threads
+    for each row
+EXECUTE procedure update_forum_users();
+create trigger trigger_update_forum_users
+    after insert
+    on posts
+    for each row
+EXECUTE procedure update_forum_users();

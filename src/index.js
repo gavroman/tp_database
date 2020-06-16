@@ -1,6 +1,7 @@
 const fs = require('fs');
 const {Pool} = require('pg');
 const express = require('express');
+const morgan = require('morgan');
 
 (async () => {
     const db = new Pool({
@@ -24,7 +25,7 @@ const express = require('express');
 
     const app = express();
     app.use(express.json()); // for parsing application/json
-
+    // app.use(morgan('dev'));
     const port = 5000;
     app.listen(port, () => {
         console.log('Listening on port', port);

@@ -102,7 +102,7 @@ module.exports = class forumHandlers {
 
         const query = `SELECT posts, threads, slug, title, nickname as "user"
                        FROM forums f
-                                JOIN users u ON (slug = $1) AND (u.id = f.userID) 
+                                JOIN users u ON (slug = $1) AND (u.id = f.userID)
                        LIMIT 1`;
         try {
             const queryResult = await this.db.query({text: query, values: [slug]});
@@ -170,10 +170,10 @@ module.exports = class forumHandlers {
             order = 'ORDER BY u.nickname DESC';
             sign = '<';
         }
-        const since = (req.query.since) ? `AND lower(u.nickname) ${sign} lower('${req.query.since}') ` : '';
+        const since = (req.query.since) ? `WHERE u.nickname ${sign} '${req.query.since}' ` : '';
         const checkForumQuery = `SELECT ID
                                  FROM forums
-                                 WHERE slug = $1;`;
+                                 WHERE slug = $1`;
         let forumID;
         try {
             const queryResult = await this.db.query({text: checkForumQuery, values: [forumSlug]});
@@ -189,12 +189,8 @@ module.exports = class forumHandlers {
         }
         const query = `SELECT nickname, fullname, about, email
                        FROM users u
-                                LEFT JOIN threads t ON (t.forumID = $1) AND (u.ID = t.userID)
-                                LEFT JOIN posts p ON (p.forumID = $1) AND (u.ID = p.userID)
-                       WHERE (t IS NOT NULL OR p IS NOT NULL) ${since}
-                       GROUP BY nickname, fullname, about, email
-                       ${order}
-                       ${limit};`;
+                                JOIN forumusers fu ON (u.id = fu.userID) AND (fu.forumID = $1)
+                       ${since} ${order} ${limit};`;
 
         try {
             const queryResult = await this.db.query({text: query, values: [forumID]});

@@ -30,7 +30,8 @@ module.exports = class threadHandlers {
             try {
                 const query = `SELECT ID, forumID AS forum
                                FROM threads
-                               WHERE slug = $1;`;
+                               WHERE slug = $1
+                               LIMIT 1;`;
                 const queryResult = await this.db.query({text: query, values: [req.params.slug_or_id]});
                 if (queryResult.rows.length === 0) {
                     res.status(404).send(new Error('No such thread'));
@@ -89,8 +90,8 @@ module.exports = class threadHandlers {
         }
         if (newPosts.length) {
             insertQuery = insertQuery.slice(0, -1) + ` RETURNING id,created,message,threadID AS thread,
-                (SELECT nickname FROM users WHERE id = userid) AS author,
-                (SELECT slug FROM forums WHERE id = forumid) AS forum,
+                (SELECT nickname FROM users WHERE id = userid LIMIT 1) AS author,
+                (SELECT slug FROM forums WHERE id = forumid LIMIT 1) AS forum,
                 parentPostID AS parent;`;
             try {
                 const insertResult = await this.db.query({text: insertQuery, values: [currentTime]});
@@ -132,7 +133,8 @@ module.exports = class threadHandlers {
                               votes
                        FROM threads t
                                 JOIN forums f ON (t.ID = $1) AND (t.forumID = f.ID)
-                                JOIN users u ON (t.userID = u.ID);`;
+                                JOIN users u ON (t.userID = u.ID)
+                       LIMIT 1;`;
         const queryResult = await this.db.query({text: query, values: [threadID]});
         if (queryResult.rows.length !== 0) {
             res.status(200).send(queryResult.rows[0]);
@@ -207,11 +209,11 @@ module.exports = class threadHandlers {
 
         let since;
         let order;
-        let parrentTreeQuery;
+        let parentTreeQuery;
         switch (sort) {
             case 'tree':
                 since = (req.query.since)
-                    ? `AND p.parents ${sign} (SELECT parents FROM posts WHERE id = ${req.query.since})` : '';
+                    ? `AND p.parents ${sign} (SELECT parents FROM posts WHERE id = ${req.query.since} LIMIT 1)` : '';
                 order = 'ORDER BY p.parents ' + desc + ', p.id ' + desc;
                 break;
             case 'parent_tree':
@@ -220,23 +222,27 @@ module.exports = class threadHandlers {
                     ? 'ORDER BY p.parents[1] DESC, p.parents, id'
                     : 'ORDER BY p.parents';
                 since = (req.query.since)
-                    ? `AND parents[1] ${sign} (SELECT parents[1] FROM posts WHERE id = ${req.query.since})` : '';
-                parrentTreeQuery = `SELECT   
-                                  u.nickname AS author,
-                                  f.slug AS forum,
-                                  p.id,
-                                  p.created,
-                                  p.message,
-                                  p.parentPostID AS parent,
-                                  p.threadID AS thread,
-                                  p.parents AS parents FROM posts p 
-                                    JOIN users u ON  (p.userID = u.ID)
-                                    JOIN forums f ON (p.forumID = f.ID) WHERE p.parents[1] in 
-                                    (SELECT ID
+                    ? `AND parents[1] ${sign} (SELECT parents[1] FROM posts WHERE id = ${req.query.since} LIMIT 1)` : '';
+
+                parentTreeQuery = `
+                                WITH threadParentPosts AS (
+                                SELECT ID
                                         FROM posts WHERE (threadID = $1) AND (parentPostID = 0)
                                         ${since} ${orderInner} ${limit}
-                                    ) ${order0uter} ;`;
-                // console.log(parrentTreeQuery);
+                                ) 
+                                SELECT   
+                                u.nickname AS author,
+                                f.slug AS forum,
+                                p.id,
+                                p.created,
+                                p.message,
+                                p.parentPostID AS parent,
+                                p.threadID AS thread,
+                                p.parents AS parents FROM posts p 
+                                  JOIN users u ON  (p.userID = u.ID)
+                                  JOIN forums f ON (p.forumID = f.ID) AND p.parents[1] in (SELECT id FROM threadParentPosts) 
+                                  ${order0uter} ;`;
+                // console.log(parentTreeQuery);
                 break;
             case 'flat':
             default:
@@ -265,7 +271,7 @@ module.exports = class threadHandlers {
                 return;
             }
             if (sort === 'parent_tree') {
-                const queryResult = await this.db.query({text: parrentTreeQuery, values: [threadID]});
+                const queryResult = await this.db.query({text: parentTreeQuery, values: [threadID]});
                 res.status(200).send(queryResult.rows);
             } else {
                 const queryResult = await this.db.query({text: query, values: [threadID]});
