@@ -34,7 +34,8 @@ module.exports = class serviceHandlers {
         }
     };
 
-    analyze = () => {
-        this.db.query('ANALYZE');
+    analyze = async (req, res) => {
+        await this.db.query('ANALYZE;');
+        res.status(404).end();
     }
 };
