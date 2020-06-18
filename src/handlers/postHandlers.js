@@ -71,13 +71,14 @@ module.exports = class postHandlers {
             relatedArray[0] = 'all';
         }
 
-        const queryPost = `SELECT u.nickname   AS author,
-                                  p.created    AS created,
-                                  f.slug       AS forum,
-                                  p.id         AS id,
-                                  p.message    AS message,
-                                  p."isEdited" AS "isEdited",
-                                  p.threadID   AS thread
+        const queryPost = `SELECT u.nickname     AS author,
+                                  p.created      AS created,
+                                  f.slug         AS forum,
+                                  p.id           AS id,
+                                  p.message      AS message,
+                                  p."isEdited"   AS "isEdited",
+                                  p.threadID     AS thread,
+                                  p.parentpostid AS parent
                            FROM posts p
                                     JOIN users u ON (p.ID = $1) AND (p.userID = u.ID)
                                     JOIN forums f ON (p.forumID = f.ID)

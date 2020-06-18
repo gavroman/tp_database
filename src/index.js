@@ -24,8 +24,8 @@ const morgan = require('morgan');
     }
 
     const app = express();
-    app.use(express.json()); // for parsing application/json
-    // app.use(morgan('dev'));
+    app.use(express.json());
+    app.use(morgan('dev'));
     const port = 5000;
     app.listen(port, () => {
         console.log('Listening on port', port);
@@ -63,4 +63,13 @@ const morgan = require('morgan');
     let serviceHandlers = new ServiceHandlers(db);
     app.post('/api/service/clear', serviceHandlers.clearAllData);
     app.get('/api/service/status', serviceHandlers.getInfo);
+
+    let heartbeatCounter = 0;
+    app.get('/api', (req, res) => {
+        if (++heartbeatCounter === 3) {
+            serviceHandlers.analyze();
+        }
+        res.status(404).end();
+        console.log('API CHECK', heartbeatCounter);
+    });
 })();

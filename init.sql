@@ -6,10 +6,16 @@ DROP TABLE IF EXISTS USERS;
 DROP TABLE IF EXISTS FORUMUSERS;
 
 
-DROP trigger IF EXISTS handle_new_post ON posts CASCADE;
-DROP FUNCTION IF EXISTS handle_new_post;
+-- DROP TRIGGER IF EXISTS handle_new_post ON posts CASCADE;
+-- DROP FUNCTION IF EXISTS handle_new_post;
 
-DROP trigger IF EXISTS increment_threads ON threads CASCADE;
+DROP TRIGGER IF EXISTS increment_threads ON threads CASCADE;
+DROP TRIGGER IF EXISTS trigger_update_post_path ON posts;
+DROP TRIGGER IF EXISTS trigger_update_forum_users ON threads;
+DROP TRIGGER IF EXISTS trigger_update_forum_users ON posts;
+
+DROP FUNCTION IF EXISTS update_post_path;
+DROP FUNCTION IF EXISTS update_forum_users;
 DROP FUNCTION IF EXISTS increment_threads;
 
 CREATE EXTENSION IF NOT EXISTS citext;
@@ -83,16 +89,14 @@ CREATE TABLE IF NOT EXISTS VOTES
     CONSTRAINT user_thread UNIQUE (userID, threadID)
 );
 
-create index if not exists postsForum on posts (forumID);
-create index if not exists postsUsers on posts (userID);
-
-create index if not exists postsParent on posts ((parents[1]));
-create index if not exists postsCreated on posts (created);
-create index if not exists threadForumID on threads (forumID);
-create index if not exists forumUsersID on threads (userID);
-
+CREATE INDEX if not exists forumUsersID on threads (userID);
+CREATE INDEX if not exists postsCreated on posts (created);
+CREATE INDEX if not exists postsForum on posts (forumID);
+CREATE INDEX if not exists postsParent on posts ((parents[2]));
 CREATE INDEX if not exists postsThreadCreatedId ON posts(threadID, created, id);
 CREATE INDEX if not exists postsThreadPathId ON posts(threadID, parents, id);
+CREATE INDEX if not exists postsUsers on posts (userID);
+CREATE INDEX if not exists threadForumID on threads (forumID);
 
 
 CREATE OR REPLACE FUNCTION increment(column_name text, forum_id integer) RETURNS void AS
@@ -127,21 +131,18 @@ $$
 DECLARE
     old_parents integer[] := '{}';
 BEGIN
-    PERFORM increment('posts', NEW.forumID);
     IF NEW.parentPostID != 0 THEN
         SELECT parents INTO old_parents FROM posts WHERE id = NEW.parentPostID LIMIT 1;
         UPDATE posts
         SET parents = array_append(old_parents, NEW.ID)
         WHERE posts.id = NEW.id;
     ELSE
-        UPDATE posts SET parents = ARRAY [NEW.id] WHERE id = NEW.id;
+        UPDATE posts SET parents = ARRAY [0, NEW.ID] WHERE id = NEW.id;
     END IF;
+    PERFORM increment('posts', NEW.forumID);
     return NEW;
 END;
 $$ LANGUAGE plpgsql;
-
-
-DROP TRIGGER IF EXISTS trigger_update_post_path ON posts;
 CREATE TRIGGER trigger_update_post_path
     AFTER INSERT
     ON posts
@@ -150,9 +151,7 @@ EXECUTE PROCEDURE update_post_path();
 
 
 
-
-
-CREATE OR REPLACE FUNCTION increment_threads() RETURNS trigger AS
+CREATE OR REPLACE FUNCTION increment_threads() RETURNS TRIGGER AS
 $increment_threads$
 BEGIN
     PERFORM increment('threads', NEW.forumID);
@@ -167,26 +166,22 @@ EXECUTE PROCEDURE increment_threads();
 
 
 -- UPDATE FORUM USERS
-create or replace function update_forum_users() RETURNS trigger AS
+CREATE OR REPLACE FUNCTION update_forum_users() RETURNS TRIGGER AS
 $$
-begin
+BEGIN
     INSERT INTO forumusers (forumID, userID)
     VALUES (NEW.forumID, NEW.userID)
     ON CONFLICT DO NOTHING;
-    return NEW;
-end;
+    RETURN NEW;
+END;
 $$ LANGUAGE plpgsql;
-
-drop trigger IF EXISTS trigger_update_forum_users ON threads;
-drop trigger IF EXISTS trigger_update_forum_users ON posts;
-
-create trigger trigger_update_forum_users
-    after insert
-    on threads
-    for each row
-EXECUTE procedure update_forum_users();
-create trigger trigger_update_forum_users
-    after insert
-    on posts
-    for each row
-EXECUTE procedure update_forum_users();
+CREATE TRIGGER trigger_update_forum_users
+    AFTER INSERT
+    ON threads
+    FOR EACH ROW
+EXECUTE PROCEDURE update_forum_users();
+CREATE TRIGGER trigger_update_forum_users
+    AFTER INSERT
+    ON posts
+    FOR EACH ROW
+EXECUTE PROCEDURE update_forum_users();

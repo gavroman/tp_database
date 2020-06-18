@@ -5,17 +5,9 @@ module.exports = class serviceHandlers {
     }
 
     clearAllData = async (req, res) => {
-        const deleteQuery = 'DELETE FROM $1';
         try {
-            const result = {};
-            await Promise.all([
-                this.db.query('DELETE FROM votes'),
-                this.db.query('DELETE FROM posts'),
-                this.db.query('DELETE FROM users'),
-                this.db.query('DELETE FROM threads'),
-                this.db.query('DELETE FROM forums'),
-            ]);
-            res.status(200).send(result);
+            await this.db.query('TRUNCATE TABLE users, forums, forumUsers, threads, posts, votes CASCADE');
+            res.status(200).send({});
         } catch (err) {
             console.log(err);
             res.status(500).send(err);
@@ -41,4 +33,8 @@ module.exports = class serviceHandlers {
             res.status(500).send(err);
         }
     };
+
+    analyze = () => {
+        this.db.query('ANALYZE');
+    }
 };

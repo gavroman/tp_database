@@ -219,15 +219,15 @@ module.exports = class threadHandlers {
             case 'parent_tree':
                 const orderInner = 'ORDER BY ID ' + desc;
                 const order0uter = (req.query.desc === 'true')
-                    ? 'ORDER BY p.parents[1] DESC, p.parents, id'
+                    ? 'ORDER BY p.parents[2] DESC, p.parents, id'
                     : 'ORDER BY p.parents';
                 since = (req.query.since)
-                    ? `AND parents[1] ${sign} (SELECT parents[1] FROM posts WHERE id = ${req.query.since} LIMIT 1)` : '';
+                    ? `AND parents[2] ${sign} (SELECT parents[2] FROM posts WHERE id = ${req.query.since} LIMIT 1)` : '';
 
                 parentTreeQuery = `
                                 WITH threadParentPosts AS (
-                                SELECT ID
-                                        FROM posts WHERE (threadID = $1) AND (parentPostID = 0)
+                                        SELECT ID FROM posts 
+                                        WHERE (threadID = $1) AND (parentPostID = 0)
                                         ${since} ${orderInner} ${limit}
                                 ) 
                                 SELECT   
@@ -240,7 +240,7 @@ module.exports = class threadHandlers {
                                 p.threadID AS thread,
                                 p.parents AS parents FROM posts p 
                                   JOIN users u ON  (p.userID = u.ID)
-                                  JOIN forums f ON (p.forumID = f.ID) AND p.parents[1] in (SELECT id FROM threadParentPosts) 
+                                  JOIN forums f ON (p.forumID = f.ID) AND p.parents[2] in (SELECT id FROM threadParentPosts) 
                                   ${order0uter} ;`;
                 // console.log(parentTreeQuery);
                 break;
