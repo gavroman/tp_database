@@ -93,8 +93,8 @@ CREATE INDEX if not exists forumUsersID on threads (userID);
 CREATE INDEX if not exists postsCreated on posts (created);
 CREATE INDEX if not exists postsForum on posts (forumID);
 CREATE INDEX if not exists postsParent on posts ((parents[2]));
-CREATE INDEX if not exists postsThreadCreatedId ON posts(threadID, created, id);
-CREATE INDEX if not exists postsThreadPathId ON posts(threadID, parents, id);
+CREATE INDEX if not exists postsThreadCreatedId ON posts (threadID, created, id);
+CREATE INDEX if not exists postsThreadPathId ON posts (threadID, parents, id);
 CREATE INDEX if not exists postsUsers on posts (userID);
 CREATE INDEX if not exists threadForumID on threads (forumID);
 
@@ -131,14 +131,10 @@ $$
 DECLARE
     old_parents integer[] := '{}';
 BEGIN
-    IF NEW.parentPostID != 0 THEN
-        SELECT parents INTO old_parents FROM posts WHERE id = NEW.parentPostID LIMIT 1;
-        UPDATE posts
-        SET parents = array_append(old_parents, NEW.ID)
-        WHERE posts.id = NEW.id;
-    ELSE
-        UPDATE posts SET parents = ARRAY [0, NEW.ID] WHERE id = NEW.id;
-    END IF;
+    SELECT parents INTO old_parents FROM posts WHERE id = NEW.parentPostID LIMIT 1;
+    UPDATE posts
+    SET parents = array_append(old_parents || ARRAY [0], NEW.ID)
+    WHERE posts.id = NEW.id;
     PERFORM increment('posts', NEW.forumID);
     return NEW;
 END;
