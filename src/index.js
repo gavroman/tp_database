@@ -65,10 +65,14 @@ const morgan = require('morgan');
     app.get('/api/service/status', serviceHandlers.getInfo);
 
     let heartbeatCounter = 0;
-    app.get('/api', (req, res) => {
+    app.get('/api', async (req, res) => {
         if (++heartbeatCounter === 3) {
-            serviceHandlers.analyze(req, res);
+            console.log('Analyze start');
+            await serviceHandlers.analyze(req, res);
+            console.log('Analyze end');
+        } else {
+            console.log('API CHECK', heartbeatCounter);
         }
-        console.log('API CHECK', heartbeatCounter);
+        res.status(404).end();
     });
 })();
