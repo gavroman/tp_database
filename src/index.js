@@ -64,12 +64,12 @@ const morgan = require('morgan');
     app.post('/api/service/clear', serviceHandlers.clearAllData);
     app.get('/api/service/status', serviceHandlers.getInfo);
 
-    let heartbeatCounter = 0;
-    app.get('/api', (req, res) => {
-        if (++heartbeatCounter === 3) {
-            serviceHandlers.analyze();
-        }
-        res.status(404).end();
-        console.log('API CHECK', heartbeatCounter);
-    });
+    // let heartbeatCounter = 0;
+    // app.get('/api', (req, res) => {
+    //     if (++heartbeatCounter === 3) {
+    //         serviceHandlers.analyze();
+    //     }
+    //     res.status(404).end();
+    //     console.log('API CHECK', heartbeatCounter);
+    // });
 })();
